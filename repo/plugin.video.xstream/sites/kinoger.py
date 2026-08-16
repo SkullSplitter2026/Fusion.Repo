@@ -7,16 +7,18 @@
 # showSeasons:    6 Stunden
 # showEpisodes:   4 Stunden
 
+import re
+import xbmcgui
 
-import base64, binascii, hashlib, re, json, pyaes
-
-from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
-from resources.lib.tools import logger, cParser
+from resources.lib.logger import logger
+from resources.lib.wrappers.meinecloud import resolveMeinecloud, resolveMeinecloudSerial, expandHosterList, buildHosterFromUrl, buildMergedHosters, MEINECLOUD_TRIGGER
+from resources.lib.tools import cParser
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.config import cConfig
 from resources.lib.gui.gui import cGui
-from itertools import zip_longest as ziplist
+
 
 SITE_IDENTIFIER = 'kinoger'
 SITE_NAME = 'KinoGer'
@@ -28,25 +30,28 @@ if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'false':
     logger.info('-> [SitePlugin]: globalSearch for %s is deactivated.' % SITE_NAME)
 
 # Domain Abfrage
-DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain') # Domain Auswahl über die xStream Einstellungen möglich
-STATUS = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '_status') # Status Code Abfrage der Domain
-ACTIVE = cConfig().getSetting('plugin_' + SITE_IDENTIFIER) # Ob Plugin aktiviert ist oder nicht
+DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain', 'kinoger.fun')  # Domain Auswahl über die xStream Einstellungen möglich
+STATUS = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '_status')  # Status Code Abfrage der Domain
+ACTIVE = cConfig().getSetting('plugin_' + SITE_IDENTIFIER)  # Ob Plugin aktiviert ist oder nicht
 
 URL_MAIN = 'https://' + DOMAIN
-# URL_MAIN = 'https://kinoger.to'
-URL_SERIES = URL_MAIN + '/stream/serie/'
+URL_KINO = URL_MAIN + '/aktuelle-kinofilme-im-kino/'
+URL_MOVIES = URL_MAIN + '/kinofilme-online/'
+URL_SERIES = URL_MAIN + '/serienstream-deutsch/'
 
-#
 
-def load(): # Menu structure of the site plugin
+def load():  # Menu structure of the site plugin
     logger.info('Load %s' % SITE_NAME)
+    xbmcgui.Window(10000).clearProperty('xstream.kinoger.lastSearchText')
     params = ParameterHandler()
-    params.setParam('sUrl', URL_MAIN)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30500), SITE_IDENTIFIER, 'showEntries'), params)    # New
+    params.setParam('sUrl', URL_KINO)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30501), SITE_IDENTIFIER, 'showEntries'), params)  # Aktuelle Releases
+    params.setParam('sUrl', URL_MOVIES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30502), SITE_IDENTIFIER, 'showEntries'), params)  # Filme
     params.setParam('sUrl', URL_SERIES)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30511), SITE_IDENTIFIER, 'showEntries'), params)  # Series
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30506), SITE_IDENTIFIER, 'showGenre'), params)    # Genre
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Search
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30511), SITE_IDENTIFIER, 'showEntries'), params)  # Serien
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30506), SITE_IDENTIFIER, 'showGenre'))  # Genre
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'))  # Suche
     cGui().setEndOfDirectory()
 
 
@@ -54,379 +59,297 @@ def showGenre():
     params = ParameterHandler()
     oRequest = cRequestHandler(URL_MAIN)
     if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 48 # 48 Stunden
+        oRequest.cacheTime = 60 * 60 * 48  # 48 Stunden
     sHtmlContent = oRequest.request()
-    pattern = '<li[^>]class="links"><a href="([^"]+).*?/>([^<]+)</a>'
+    # Genre-Items aus Sidebar/Footer-Menue, Format: <li class="links"><a href="ABSOLUTE_URL"><img.../> <b>Name</b></a></li>
+    pattern = r'<li class="links"><a href="([^"]+)"><img[^>]*/>\s*<b>([^<]+)</b></a></li>'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
     if not isMatch:
         cGui().showInfo()
         return
 
+    # Top-Level Kategorien (Kinofilme, Serien, Aktuelle, Demnaechst) raus — zeigen wir schon im Hauptmenue
+    # Erotikfilme raus — wie bei den anderen Sites in xStream
+    skip = (URL_KINO, URL_MOVIES, URL_SERIES, URL_MAIN + '/demnachst/', URL_MAIN + '/erotikfilme/')
     for sUrl, sName in aResult:
-        params.setParam('sUrl', URL_MAIN + sUrl)
+        if sUrl in skip:
+            continue
+        params.setParam('sUrl', sUrl)
         cGui().addFolder(cGuiElement(sName, SITE_IDENTIFIER, 'showEntries'), params)
     cGui().setEndOfDirectory()
 
 
-def showEntries(entryUrl=False, sGui=False, sSearchText=False, sSearchPageText = False):
+def showEntries(entryUrl=False, sGui=False, sSearchText=False):
     oGui = sGui if sGui else cGui()
     params = ParameterHandler()
-    if not entryUrl: entryUrl = params.getValue('sUrl')
+    if not entryUrl:
+        entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
     if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
         oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     if sSearchText:
-        oRequest.addParameters('story', sSearchText)
         oRequest.addParameters('do', 'search')
         oRequest.addParameters('subaction', 'search')
-        oRequest.addParameters('x', '0')
-        oRequest.addParameters('y', '0')
+        oRequest.addParameters('story', sSearchText)
         oRequest.addParameters('titleonly', '3')
         oRequest.addParameters('submit', 'submit')
-    else:
-        oRequest.addParameters('dlenewssortby', 'date')
-        oRequest.addParameters('dledirection', 'desc')
-        oRequest.addParameters('set_new_sort', 'dle_sort_main')
-        oRequest.addParameters('set_direction_sort', 'dle_direction_main')
     sHtmlContent = oRequest.request()
-    pattern = 'class="title".*?href="([^"]+)">([^<]+).*?src="([^"]+)(.*?)</a> </span>'
+    # Pattern: <div class="title"><div class="begin"><img.../> <a href="URL">Name (Year)</a></div></div>
+    # ... gefolgt von <div class="content_text"><img src="THUMB" .../>BESCHREIBUNG<br><br
+    pattern = r'<div class="title">\s*<div class="begin"><img[^>]*class="img"[^>]*/>\s*<a href="([^"]+)">([^<]+)</a>.*?<div class="content_text">.*?<img src="([^"]+)"[^>]*alt="[^"]*"[^>]*>(.+?)<br><br'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
     if not isMatch:
-        if not sGui: oGui.showInfo()
+        if not sGui:
+            oGui.showInfo()
         return
 
     total = len(aResult)
+    isTvshow = True if 'serienstream' in entryUrl else False  # Default basierend auf URL
     for sUrl, sName, sThumbnail, sDummy in aResult:
         if sSearchText and not cParser.search(sSearchText, sName):
             continue
-        isTvshow = True if 'staffel' in sName.lower() or 'serie' in entryUrl or ';">S0' in sDummy else False
-        isYear, sYear = cParser.parse(sName, r'(.*?)\s+\((\d+)\)') # Jahr und Name trennen
-        if isYear:
-            for name, year in sYear:
-                sName = name
-                sYear = year
-                break
+        # Serien werden via "Staffel" im Titel oder /serienstream-deutsch/-URL erkannt
+        isTvshow = True if 'staffel' in sName.lower() or 'serienstream' in entryUrl else False
+        # Jahr aus Name extrahieren: "Der Super Mario Galaxy Film (2026)"
+        sYear = ''
+        isYear, aYear = cParser.parse(sName, r'(.*?)\s+\((\d{4})\)')
+        if isYear and aYear:
+            sName, sYear = aYear[0]
+            sName = sName.strip()
+        # Extra-Tags wie "*English*" oder "*Subbed*" rausziehen
+        sName = re.sub(r'\s*\*[^*]+\*\s*', ' ', sName).strip()
         if sThumbnail.startswith('/'):
             sThumbnail = URL_MAIN + sThumbnail
-        isDesc, sDesc = cParser.parseSingleResult(sDummy, '(?:</b></div>|</div></b>|</b>)([^<]+)') # Beschreibung
-        isDuration, sDuration = cParser.parseSingleResult(sDummy, r'(?:Laufzeit|Spielzeit).*?([\d]+)') # Laufzeit
+        # Beschreibung aus dem Dummy-Block (alles vor dem Genre/Quality-Block)
+        sDesc = sDummy
+        # Erstes <div ...></div> (text-align right) raus
+        sDesc = re.sub(r'<div[^>]*></div>', '', sDesc).strip()
+        # Quality aus <b>(HD)</b>
+        sQual = ''
+        isQual, aQual = cParser.parseSingleResult(sDummy, r'<b>\(([^)]+)\)</b>')
+        if isQual:
+            sQual = aQual
+
         oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showSeasons' if isTvshow else 'showHosters')
         oGuiElement.setMediaType('tvshow' if isTvshow else 'movie')
         oGuiElement.setThumbnail(sThumbnail)
-        if isYear:
+        if sYear:
             oGuiElement.setYear(sYear)
-        if isDesc:
-            oGuiElement.setDescription(sDesc)
-        if isDuration:
-            oGuiElement.addItemValue('duration', sDuration)
-        # Parameter übergeben
-        params.setParam('sThumbnail', sThumbnail)
-        params.setParam('TVShowTitle', sName)
+        if sDesc:
+            oGuiElement.setDescription(sDesc[:500])  # Beschreibung trimmen
+        if sQual:
+            oGuiElement.setQuality(sQual)
         params.setParam('entryUrl', sUrl)
+        params.setParam('searchTitle', sName)
         oGui.addFolder(oGuiElement, params, isTvshow, total)
-    if not sGui and not sSearchText and not sSearchPageText:
-        isMatchNextPage, sNextUrl = cParser.parseSingleResult(sHtmlContent, '<a[^>]href="([^"]+)">vorw')
-        # Start Page Function
-        isMatchSiteSearch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, 'class="navigation(.*?)</a></div>')
-        if isMatchSiteSearch:
-            isMatch, aResult = cParser.parse(sHtmlContainer, r'<span>([\d]+)</span>.*?nav_ext">.*?">([\d]+).*?href="([^"]+)')
-            for sPageActive, sPageLast, sNextPage in aResult:
-                #sPageName = '[I]Seitensuche starten  >>> [/I] Seite ' + str(sPageActive) + ' von ' + str(sPageLast) + ' Seiten  [I]<<<[/I]'
-                sPageName = cConfig().getLocalizedString(30284) + str(sPageActive) + cConfig().getLocalizedString(30285) + str(sPageLast) + cConfig().getLocalizedString(30286)
-                params.setParam('sNextPage', sNextPage)
-                params.setParam('sPageLast', sPageLast)
-                oGui.searchNextPage(sPageName, SITE_IDENTIFIER, 'showSearchPage', params)
-            # End Page Function
-        if isMatchNextPage:
-            params.setParam('sUrl', sNextUrl)
-            oGui.addNextPage(SITE_IDENTIFIER, 'showEntries', params)
-        oGui.setView('tvshows' if 'staffel' in sName.lower() else 'movies')
+    if not sGui:
+        # Pagination: <a href="URL">vorwaerts + ...</a> am Ende des Navigation-Blocks
+        # Findet auf Movie-Listings + Genre. Search hat keine Pagination auf kinoger.my
+        if not sSearchText:
+            isMatchNextPage, sNextUrl = cParser.parseSingleResult(sHtmlContent, r'href="([^"]+)">vorw')
+            if isMatchNextPage:
+                params.setParam('sUrl', sNextUrl)
+                oGui.addNextPage(SITE_IDENTIFIER, 'showEntries', params)
+        oGui.setView('tvshows' if isTvshow else 'movies')
         oGui.setEndOfDirectory()
 
 
 def showSeasons():
     params = ParameterHandler()
-    # Parameter laden
-    entryUrl = params.getValue('entryUrl')
-    sThumbnail = params.getValue('sThumbnail')
-    sTVShowTitle = params.getValue('TVShowTitle')
-    oRequest = cRequestHandler(entryUrl)
+    sUrl = params.getValue('entryUrl')
+    sName = params.getValue('searchTitle')
+    sThumb = params.getValue('thumbnail') if params.exist('thumbnail') else ''
+    oRequest = cRequestHandler(sUrl)
     if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # HTML Cache Zeit 6 Stunden
+        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     sHtmlContent = oRequest.request()
-    L11 = []
-    isMatchsst, sstsContainer = cParser.parseSingleResult(sHtmlContent, 'sst.show.*?</script>')
-    if isMatchsst:
-        sstsContainer = sstsContainer.replace('[', '<').replace(']', '>')
-        isMatchsst, L11 = cParser.parse(sstsContainer, "<'([^>]+)")
-        if isMatchsst:
-            total = len(L11)
-    L22 = []
-    isMatchollhd, ollhdsContainer = cParser.parseSingleResult(sHtmlContent, 'ollhd.show.*?</script>')
-    if isMatchollhd:
-        ollhdsContainer = ollhdsContainer.replace('[', '<').replace(']', '>')
-        isMatchollhd, L22 = cParser.parse(ollhdsContainer, "<'([^>]+)")
-        if isMatchollhd:
-            total = len(L22)
-    L33 = []
-    isMatchpw, pwsContainer = cParser.parseSingleResult(sHtmlContent, 'pw.show.*?</script>')
-    if isMatchpw:
-        pwsContainer = pwsContainer.replace('[', '<').replace(']', '>')
-        isMatchpw, L33 = cParser.parse(pwsContainer, "<'([^>]+)")
-        if isMatchpw:
-            total = len(L33)
 
-    L44 = []
-    isMatchgo, gosContainer = cParser.parseSingleResult(sHtmlContent, 'go.show.*?</script>')
-    if isMatchgo:
-        gosContainer = gosContainer.replace('[', '<').replace(']', '>')
-        isMatchgo, L44 = cParser.parse(gosContainer, "<'([^>]+)")
-        if isMatchgo:
-            total = len(L44)
+    # Native interne Staffeln (kinoger-Norm: eine Serienseite = intern immer "1",
+    # die echte Staffelnummer steht nur im Titel).
+    _, aNativeInternal = cParser.parse(sHtmlContent, r'<li id="serie-(\d+)_\d+">')
+    nativeInternal = sorted(set(aNativeInternal), key=int) if aNativeInternal else []
 
-    isDesc, sDesc = cParser.parseSingleResult(sHtmlContent, '</b>([^"]+)<br><br>')
-    for i in range(0, total):
-        try:
-            params.setParam('L11', L11[i])
-        except Exception:
-            pass
-        try:
-            params.setParam('L22', L22[i])
-        except Exception:
-            pass
-        try:
-            params.setParam('L33', L33[i])
-        except Exception:
-            pass
-        try:
-            params.setParam('L44', L44[i])
-        except Exception:
-            pass
-        i = i + 1
-        oGuiElement = cGuiElement('Staffel ' + str(i), SITE_IDENTIFIER, 'showEpisodes')
+    # meinecloud-Staffeln IMMER mitpruefen (nicht nur als Fallback): kinoger legt pro
+    # Staffel eine eigene Seite an, meinecloud liefert die KOMPLETTE Serie. Hat mc mehr
+    # Staffeln als die native Seite, nehmen wir mc als Rueckgrat (alle Staffeln sichtbar)
+    # und mergen die nativen Hoster in die passende Staffel (siehe showEpisodes).
+    _, aImdb = cParser.parse(sHtmlContent, r'(tt\d{7,9})')
+    sImdbId = aImdb[0] if aImdb else ''
+    aMc = resolveMeinecloudSerial(sImdbId, referer=sUrl, siteHtml=sHtmlContent) if sImdbId else []
+    mcSeasons = sorted(set(ep['season'] for ep in aMc))
+
+    if mcSeasons and len(mcSeasons) > len(nativeInternal):
+        seasons = [str(s) for s in mcSeasons]
+    elif nativeInternal:
+        # nur native: die echte Staffel steht im Titel (intern "1" -> Titel-Staffel)
+        isTitleSeason, sTitleSeason = cParser.parseSingleResult(sName, r'[Ss]taffel\s*(\d+)')
+        if len(nativeInternal) == 1 and isTitleSeason:
+            seasons = [sTitleSeason]
+        else:
+            seasons = nativeInternal
+    elif mcSeasons:
+        seasons = [str(s) for s in mcSeasons]
+    else:
+        seasons = []
+
+    if not seasons:
+        cGui().showInfo()
+        return
+
+    # Nur eine Staffel: Ordner-Ebene sparen, direkt in die Episoden springen
+    # (bereits geladenes HTML weiterreichen).
+    if len(seasons) == 1:
+        showEpisodes(staffel=seasons[0], htmlContent=sHtmlContent)
+        return
+
+    for sStaffel in seasons:
+        oGuiElement = cGuiElement(cConfig().getLocalizedString(30512) + ' %s' % sStaffel, SITE_IDENTIFIER, 'showEpisodes')
         oGuiElement.setMediaType('season')
-        oGuiElement.setTVShowTitle(sTVShowTitle)
-        oGuiElement.setSeason(i)
-        oGuiElement.setThumbnail(sThumbnail)
-        if isDesc:
-            oGuiElement.setDescription(sDesc)
-        params.setParam('sDesc', sDesc)
-        params.setParam('sSeasonNr', i)
-        cGui().addFolder(oGuiElement, params, True, total)
-        cGui().setView('seasons')
+        oGuiElement.setSeason(sStaffel)
+        if sThumb:
+            oGuiElement.setThumbnail(sThumb)
+        params.setParam('entryUrl', sUrl)
+        params.setParam('staffel', sStaffel)
+        params.setParam('searchTitle', sName)
+        cGui().addFolder(oGuiElement, params, True)
+    cGui().setView('seasons')
     cGui().setEndOfDirectory()
 
 
-def showEpisodes():
+def showEpisodes(staffel=None, htmlContent=None):
     params = ParameterHandler()
-    sSeasonNr = params.getValue('sSeasonNr')
-    sThumbnail = params.getValue('sThumbnail')
-    sTVShowTitle = params.getValue('TVShowTitle')
-    sDesc = params.getValue('sDesc')
-    L11 = []
-    if params.exist('L11'):
-        L11 = params.getValue('L11')
-        isMatch1, L11 = cParser.parse(L11, "(http[^']+)")
-    L22 = []
-    if params.exist('L22'):
-        L22 = params.getValue('L22')
-        isMatch, L22 = cParser.parse(L22, "(http[^']+)")
-    L33 = []
-    if params.exist('L33'):
-        L33 = params.getValue('L33')
-        isMatch3, L33 = cParser.parse(L33, "(http[^']+)")
-    L44 = []
-    if params.exist('L44'):
-        L44 = params.getValue('L44')
-        isMatch4, L44 = cParser.parse(L44, "(http[^']+)")
-    liste = ziplist(L11, L22, L33, L44)
-    i = 0
-    for sUrl in liste:
-        i = i + 1
-        oGuiElement = cGuiElement('Episode ' + str(i), SITE_IDENTIFIER, 'showHosters')
-        oGuiElement.setTVShowTitle(sTVShowTitle)
-        oGuiElement.setSeason(sSeasonNr)
-        oGuiElement.setEpisode(i)
+    sUrl = params.getValue('entryUrl')
+    sName = params.getValue('searchTitle')
+    # staffel/htmlContent werden von showSeasons durchgereicht (Single-Staffel-Skip),
+    # sonst kommen sie wie gehabt aus den Parametern bzw. per Request.
+    sStaffel = staffel if staffel is not None else params.getValue('staffel')
+    sThumb = params.getValue('thumbnail') if params.exist('thumbnail') else ''
+    if htmlContent is not None:
+        sHtmlContent = htmlContent
+    else:
+        oRequest = cRequestHandler(sUrl)
+        if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
+            oRequest.cacheTime = 60 * 60 * 4  # 4 Stunden
+        sHtmlContent = oRequest.request()
+    # --- Native Episoden dieser Seite als Map {episode:int -> (linktext, hosterBlock)}.
+    # kinoger-Norm: intern immer eine Staffel ("serie-1_N"), echte Nummer im Titel.
+    # Der Linktext ("Episoden N") wird 1:1 als Label uebernommen (Site-Original), wenn
+    # meinecloud keinen Episodentitel liefert. ---
+    nativeMap = {}
+    _, aInternal = cParser.parse(sHtmlContent, r'<li id="serie-(\d+)_\d+">')
+    internalSeasons = sorted(set(aInternal), key=int) if aInternal else []
+    isTitleSeason, sTitleSeason = cParser.parseSingleResult(sName, r'[Ss]taffel\s*(\d+)')
+    sInternalForThis = None
+    if len(internalSeasons) == 1:
+        # echte Staffel dieser Seite = Titel-Staffel (Fallback: interne Nummer)
+        sRealOfPage = sTitleSeason if isTitleSeason else internalSeasons[0]
+        if str(sRealOfPage) == str(sStaffel):
+            sInternalForThis = internalSeasons[0]
+    elif str(sStaffel) in internalSeasons:
+        # kinoger fuehrt doch mehrere interne Staffeln -> direkt matchen
+        sInternalForThis = str(sStaffel)
+    if sInternalForThis is not None:
+        pattern = r'<li id="serie-' + re.escape(sInternalForThis) + r'_(\d+)"><a href="#">([^<]+)</a>\s*<ul[^>]*>(.*?)</ul>\s*</li>'
+        isNat, aNat = cParser.parse(sHtmlContent, pattern)
+        if isNat:
+            for sEp, sTxt, sBlock in aNat:
+                nativeMap[int(sEp)] = (sTxt.strip(), sBlock)
+
+    # --- meinecloud Episoden dieser Staffel als Map {episode:int -> ep-dict}. ---
+    _, aImdb = cParser.parse(sHtmlContent, r'(tt\d{7,9})')
+    sImdbId = aImdb[0] if aImdb else ''
+    aMc = resolveMeinecloudSerial(sImdbId, referer=sUrl, siteHtml=sHtmlContent) if sImdbId else []
+    mcMap = {ep['episode']: ep for ep in aMc if str(ep['season']) == str(sStaffel)}
+
+    if not nativeMap and not mcMap:
+        cGui().showInfo()
+        return
+
+    # --- Merge: Union aller Episoden-Nummern (meinecloud + native). Pro Episode
+    # bekommt showHosters BEIDE Quellen mit (nativer hosterBlock + meinecloud-URL)
+    # und legt sie via buildMergedHosters zusammen ("mc plus deren"). ---
+    allEps = sorted(set(mcMap.keys()) | set(nativeMap.keys()))
+    total = len(allEps)
+    for iEp in allEps:
+        mcEp = mcMap.get(iEp)
+        sTxt, sBlock = nativeMap.get(iEp, ('', ''))
+        # Label: meinecloud-Titel bevorzugt (informativer), sonst Site-Linktext 1:1,
+        # sonst synthetisch.
+        if mcEp:
+            sEpTitle = '%s - S%sE%s — %s' % (sName, str(sStaffel).zfill(2), str(iEp).zfill(2), mcEp['title'])
+        elif sTxt:
+            sEpTitle = sTxt
+        else:
+            sEpTitle = '%s - S%sE%s' % (sName, str(sStaffel).zfill(2), str(iEp).zfill(2))
+        oGuiElement = cGuiElement(sEpTitle, SITE_IDENTIFIER, 'showHosters')
         oGuiElement.setMediaType('episode')
-        if sDesc:
-            oGuiElement.setDescription(sDesc)
-        if sThumbnail:
-            oGuiElement.setThumbnail(sThumbnail)
-        params.setParam('sLinks', sUrl)
-        cGui().addFolder(oGuiElement, params, False)
+        oGuiElement.setSeason(str(sStaffel))
+        oGuiElement.setEpisode(str(iEp))
+        if sThumb:
+            oGuiElement.setThumbnail(sThumb)
+        params.setParam('hosterBlock', sBlock)
+        params.setParam('meinecloud_url', mcEp['url'] if mcEp else '')
+        params.setParam('searchTitle', sName)
+        cGui().addFolder(oGuiElement, params, False, total)
     cGui().setView('episodes')
     cGui().setEndOfDirectory()
 
 
 def showHosters():
     hosters = []
-    headers = '&Accept-Language=de%2Cde-DE%3Bq%3D0.9%2Cen%3Bq%3D0.8%2Cen-GB%3Bq%3D0.7%2Cen-US%3Bq%3D0.6&Accept=%2A%2F%2A&User-Agent=Mozilla%2F5.0+%28Windows+NT+10.0%3B+Win64%3B+x64%3B+rv%3A99.0%29+Gecko%2F20100101+Firefox%2F99.0'
     params = ParameterHandler()
-    if params.exist('sLinks'):
-        sUrl = params.getValue('sLinks')
-        isMatch, aResult = cParser.parse(sUrl, "(http[^']+)")
-    else:
-        sUrl = params.getValue('entryUrl')
-        sHtmlContent = cRequestHandler(sUrl, ignoreErrors=True, caching=False).request()
-        pattern = r"show[^>]\d,[^>][^>]'([^']+)"
-        isMatch, aResult = cParser.parse(sHtmlContent, pattern)
+    # Serie: showEpisodes hat hosterBlock (nativ) und/oder meinecloud_url gesetzt.
+    # Movie: keiner der beiden -> Movie-Page laden.
+    sHosterBlock = params.getValue('hosterBlock') if params.exist('hosterBlock') else ''
+    sMcUrl = params.getValue('meinecloud_url') if params.exist('meinecloud_url') else ''
+
+    if sHosterBlock or sMcUrl:
+        # Merge-Pfad: native data-link Hoster aus dem Block + meinecloud-URL
+        # zusammenlegen ("mc plus deren"), dedupliziert (siehe buildMergedHosters).
+        aNativeRaw = []
+        if sHosterBlock:
+            isMatch, aNativeRaw = cParser.parse(sHosterBlock, r'data-link="([^"]+)"')
+            if not isMatch:
+                aNativeRaw = []
+        hosters = buildMergedHosters(aNativeRaw, sMcUrl, referer=URL_MAIN + '/')
+        if hosters:
+            hosters.append('getHosterUrl')
+        return hosters
+
+    # Movie-Pfad: Hoster direkt von der Movie-Page.
+    sUrl = params.getValue('entryUrl')
+    sHtmlContent = cRequestHandler(sUrl, caching=False).request()
+    isMatch, aResult = cParser.parse(sHtmlContent, r'data-link="([^"]+)"')
     if isMatch:
-        for sUrl in aResult:
-            try:
-                if 'kinoger.ru' in sUrl: continue
-                #    oRequest = cRequestHandler(sUrl, caching=False, ignoreErrors=True)
-                #    oRequest.addHeaderEntry('Referer', 'https://kinoger.com/')
-                #    sHtmlContent = oRequest.request()  # Durchsucht sHtml Content
-                #    if isMatch:
-                #        decryptHtmlContent = content_decryptor(sHtmlContent, 'H&5+Tx_nQcdK{U,.') # Decrypt Content
-                #        isMatch, hUrl = cParser.parseSingleResult(decryptHtmlContent, 'sources.*?file.*?(http[^"]+)')
-                #    if isMatch:
-                #        hUrl = hUrl.replace('\\', '')
-                #        oRequest = cRequestHandler(hUrl, caching=False, ignoreErrors=True)
-                #        oRequest.addHeaderEntry('Referer', 'https://kinoger.ru/')
-                #        oRequest.addHeaderEntry('Origin', 'https://kinoger.ru')
-                #        oRequest.removeNewLines(False)
-                #        sHtmlContent = oRequest.request()
-                #        if not 'MEDIA:TYPE=AUDIO' in sHtmlContent: # Wenn keine zusätzlichen Audiostreams vorhanden durchsuche m3u8 und filter Links aus
-                #            pattern = 'RESOLUTION=.*?x(\d+).*?\n([^\s]+)'
-                #            isMatch, aResult = cParser.parse(sHtmlContent, pattern)
-                #            if isMatch:
-                #                for sQuality, sUrl in aResult:
-                #                    sUrl = (hUrl.split('video')[0].strip() + sUrl.strip())
-                #                    sUrl = sUrl + '|verifypeer=false&Referer=https%3A%2F%2Fkinoger.ru%2F&Origin=https%3A%2F%2Fkinoger.ru' + headers
-                #                    hoster = {'link': sUrl, 'name': 'KinoGer.ru [I][%sp][/I]' % sQuality, 'quality': sQuality, 'resolveable': True}
-                #                    hosters.append(hoster)
-                #        else: # Wenn Audiostreams enthalten nutze video.m3u8 und lese Content daraus
-                #            sUrl = hUrl + '|verifypeer=false&Referer=https%3A%2F%2Fkinoger.ru%2F&Origin=https%3A%2F%2Fkinoger.ru' + headers
-                #            hoster = {'link': sUrl, 'name': 'KinoGer.ru [I][Video/Audio auswählbar][/I]', 'resolveable': True}
-                #            hosters.append(hoster)
-
-                elif 'kinoger.be' in sUrl:
-                    oRequest = cRequestHandler(sUrl, caching=False, ignoreErrors=True)
-                    oRequest.addHeaderEntry('Referer', 'https://kinoger.com/')
-                    sHtmlContent = oRequest.request()
-                    # Wenn Content p.a.c.k.e.d ist dann entpacken
-                    isMatch, packed = cParser.parseSingleResult(sHtmlContent, r'(eval\s*\(function.*?)</script>')
-                    if isMatch:
-                        from resources.lib import jsunpacker
-                        sHtmlContent = jsunpacker.unpack(packed)
-                    isMatch, hUrl = cParser.parseSingleResult(sHtmlContent, 'sources.*?file.*?(http[^"]+)')
-                    if isMatch:
-                        hUrl = hUrl.replace('\\', '')
-                        oRequest = cRequestHandler(hUrl, caching=False, ignoreErrors=True)
-                        oRequest.addHeaderEntry('Referer', 'https://kinoger.be/')
-                        oRequest.addHeaderEntry('Origin', 'https://kinoger.be')
-                        oRequest.removeNewLines(False)
-                        sHtmlContent = oRequest.request()
-                        if 'CF-DDOS-GUARD aktiv' in sHtmlContent: # Wenn Request eine 403 zurückgibt dann überspringen
-                            continue
-                        else:
-                            pattern = r'RESOLUTION=.*?x(\d+).*?\n(index[^\n]+)'
-                            isMatch, aResult = cParser.parse(sHtmlContent, pattern)
-                    if isMatch:
-                        for sQuality, sUrl in aResult:
-                            sUrl = (hUrl.split('video')[0].strip() + sUrl.strip())
-                            sUrl = sUrl + '|Origin=https%3A%2F%2Fkinoger.be&Referer=https%3A%2F%2Fkinoger.be%2F' + headers
-                            hoster = {'link': sUrl, 'name': 'KinoGer.be [I][%sp][/I]' % sQuality, 'quality': sQuality, 'resolveable': True}
-                            hosters.append(hoster)
-
-                elif 'kinoger.pw' in sUrl: # Veev
-                    sQuality = '720'
-                    hoster = {'link': sUrl + 'DIREKT', 'name': 'Veev.to [I][%sp][/I]'% sQuality, 'quality': sQuality}
-                    hosters.append(hoster)
-
-                elif 'kinoger.re' in sUrl:
-                    sQuality = '1080'
-                    hoster = {'link': sUrl + 'DIREKT', 'name': 'Kinoger.re [I][%sp][/I]'% sQuality, 'quality': sQuality, 'resolveable': True}
-                    hosters.append(hoster)
-
-                else: # Alle anderen Hoster wie z.B. Voe
-                    sQuality = '720'
-                    sName = cParser.urlparse(sUrl)
-                    if cConfig().isBlockedHoster(sName)[0]: continue  # Hoster aus settings.xml oder deaktivierten Resolver ausschließen
-                    hoster = {'link': sUrl + 'DIREKT', 'name': sName, 'displayedName': '%s [I][%sp][/I]' % (sName, sQuality), 'quality': sQuality}
-                    hosters.append(hoster)
-
-            except Exception:
-                pass
-
-    if not isMatch:
-        return
-
+        sQuality = '720'
+        aResult = expandHosterList(aResult, referer=URL_MAIN + '/')
+        for sHosterUrl in aResult:
+            # kinoger-spezifischer Filter: interner 4K-Server-Link
+            if sHosterUrl.startswith('/vod/'):
+                continue
+            hoster = buildHosterFromUrl(sHosterUrl, sQuality=sQuality, includeQualitySuffix=True)
+            if hoster:
+                hosters.append(hoster)
     if hosters:
         hosters.append('getHosterUrl')
     return hosters
 
 
 def getHosterUrl(sUrl=False):
-    if sUrl.endswith('DIREKT'):
-        sUrl = sUrl[:-6]
-        Request = cRequestHandler(sUrl, caching=False)
-        Request.request()
-        sUrl = Request.getRealUrl()  # hole reale URL von der Umleitung
-
-        return [{'streamUrl': sUrl, 'resolved': False}]
-    else:
-        return [{'streamUrl': sUrl, 'resolved': True}]
+    return [{'streamUrl': sUrl, 'resolved': False}]
 
 
 def showSearch():
-    sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
-    if not sSearchText: return
+    win = xbmcgui.Window(10000)
+    sSearchText = win.getProperty('xstream.kinoger.lastSearchText')
+    if not sSearchText:
+        sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
+        if not sSearchText:
+            return
+        win.setProperty('xstream.kinoger.lastSearchText', sSearchText)
     _search(False, sSearchText)
     cGui().setEndOfDirectory()
 
 
 def _search(oGui, sSearchText):
-    showEntries(URL_MAIN, oGui, sSearchText)
-
-
-def showSearchPage(): # Suche für die Page Funktion
-    params = ParameterHandler()
-    sNextPage = params.getValue('sNextPage') # URL mit nächster Seite
-    sPageLast = params.getValue('sPageLast') # Anzahl gefundener Seiten
-    #sHeading = 'Bitte eine Zahl zwischen 1 und ' + str(sPageLast) + ' wählen.'
-    sHeading = cConfig().getLocalizedString(30282) + str(sPageLast)
-    sSearchPageText = cGui().showKeyBoard(sHeading=sHeading)
-    if not sSearchPageText: return
-    sNextSearchPage = sNextPage.split('page/')[0].strip() + 'page/' + sSearchPageText + '/'
-    showEntries(sNextSearchPage)
-    cGui().setEndOfDirectory()
-
-
-def content_decryptor(html_content,passphrase):
-    match = re.compile(r'''JScripts = '(.+?)';''', re.DOTALL).search(html_content)
-    if match:
-        # Parse the JSON string
-        json_obj = json.loads(match.group(1))
-
-        # Extract the salt, iv, and ciphertext from the JSON object
-        salt = binascii.unhexlify(json_obj["s"])
-        iv = binascii.unhexlify(json_obj["iv"])
-        ct = base64.b64decode(json_obj["ct"])
-
-        # Concatenate the passphrase and the salt
-        concated_passphrase = passphrase.encode() + salt
-
-        # Compute the MD5 hashes
-        md5 = [hashlib.md5(concated_passphrase).digest()]
-        result = md5[0]
-        i = 1
-        while len(result) < 32:
-            md5.append(hashlib.md5(md5[i - 1] + concated_passphrase).digest())
-            result += md5[i]
-            i += 1
-
-        # Extract the key from the result
-        key = result[:32]
-
-        # Decrypt the ciphertext using AES-256-CBC
-        aes = pyaes.AESModeOfOperationCBC(key, iv)
-        decrypter = pyaes.Decrypter(aes)
-        plain_text = decrypter.feed(ct)
-        plain_text += decrypter.feed()
-
-        # Return the decrypted data as a JSON object
-        return json.loads(plain_text.decode())
-    else:
-        return None
+    showEntries(URL_MAIN + '/', oGui, sSearchText)

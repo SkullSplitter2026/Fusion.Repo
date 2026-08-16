@@ -1,0 +1,11 @@
+<settings>
+    <category label="M3U Export">
+        <setting id="epg_enabled" type="bool" label="EPG aktivieren" default="true"/>
+        <setting id="epg_url" type="text" label="EPG URL (XMLTV)" default="https://epgshare01.online/epgshare01/epg_ripper_ALL_SOURCES1.xml.gz"/>
+        <setting id="auto_map" type="bool" label="Automatische EPG-Zuordnung (iptv-org)" default="true"/>
+        <setting id="export_path" type="text" label="Export-Ordner (Pfad manuell eingeben)" default="special://userdata/addon_data/plugin.video.vav/"/>
+        <setting id="export_path_browse" type="action" label="Export-Ordner (Ordner auswaehlen)" action="RunPlugin(plugin://plugin.video.vav/?mode=browse_export_path)"/>
+        <setting id="epg_refresh" type="action" label="EPG-Zuordnung aktualisieren" action="RunPlugin(plugin://plugin.video.vav/?mode=epg_refresh)"/>
+        <setting id="export_m3u" type="action" label="M3U jetzt exportieren" action="RunPlugin(plugin://plugin.video.vav/?mode=export_m3u)"/>
+    </category>
+</settings>

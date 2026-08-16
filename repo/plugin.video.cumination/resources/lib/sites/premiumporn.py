@@ -22,12 +22,6 @@ import xbmcgui
 from resources.lib import utils
 from six.moves import urllib_parse
 from resources.lib.adultsite import AdultSite
-import json
-import base64
-try:
-    from Cryptodome.Cipher import AES
-except Exception as error:
-    utils.kodilog('Import Error Cryptodome: {}'.format(error))
 
 site = AdultSite('premiumporn', '[COLOR hotpink]PremiumPorn[/COLOR]', 'https://premiumporn.org/', 'premiumporn.png', 'premiumporn')
 
@@ -106,23 +100,6 @@ def Search(url, keyword=None):
         List(url)
 
 
-def base64_url_decode(data):
-    padding = 4 - (len(data) % 4)
-    if padding != 4:
-        data += '=' * padding
-    data = data.replace('-', '+').replace('_', '/')
-    return base64.b64decode(data)
-
-
-def decrypt_aes_gcm(payload, key, iv):
-    try:
-        cipher = AES.new(key, AES.MODE_GCM, nonce=iv)
-        plaintext = cipher.decrypt_and_verify(payload[:-16], payload[-16:])
-        return plaintext.decode('utf-8')
-    except Exception as e:
-        return "Decryption failed: {}".format(str(e))
-
-
 @site.register()
 def Play(url, name, download=None):
     vp = utils.VideoPlayer(name, download)
@@ -133,55 +110,7 @@ def Play(url, name, download=None):
         src = {m[1]: m[0] for m in match}
         embed_url = utils.selector("Select host", src)
         if embed_url:
-            if "vidara" in embed_url:
-                id = embed_url.split('/e/')[1].split('"')[0]
-                vid_url = "https://vidara.so/api/stream"
-                data = {"filecode": id, "device": "web"}
-                response = utils.postHtml(vid_url, json_data=data, headers={'Content-Type': 'application/json'})
-                response_json = json.loads(response)
-                video_url = response_json.get('streaming_url', '')
-                if video_url:
-                    vp.play_from_direct_link(video_url)
-                    vp.progress.close()
-                    return
-                else:
-                    utils.notify('Oh oh', 'Unable to retrieve video URL')
-                    return
-            elif "bysewihe" in embed_url:
-                id = embed_url.split('/e/')[-1].split('/')[0]
-                details_url = 'https://bysewihe.com/api/videos/{}/embed/details'.format(id)
-                hdr = utils.base_hdrs.copy()
-                hdr['X-Embed-Origin'] = 'premiumporn.org'
-                hdr['X-Embed-Parent'] = embed_url
-                hdr['X-Embed-Referer'] = site.url
-                details_data = utils.getHtml(details_url, embed_url, headers=hdr)
-                details_json = json.loads(details_data)
-                embed = details_json.get('embed_frame_url', '')
-                api_url = 'https://g9r6.com/api/videos/{}/embed/playback'.format(id)
-                api_data = utils.getHtml(api_url, embed, headers=hdr)
-                encrypted_data = json.loads(api_data)
-
-                playback = encrypted_data["playback"]
-
-                iv = base64_url_decode(playback["iv"])
-                payload = base64_url_decode(playback["payload"])
-
-                key_part1 = base64_url_decode(playback["key_parts"][0])
-                key_part2 = base64_url_decode(playback["key_parts"][1])
-                combined_key = key_part1 + key_part2
-
-                result = decrypt_aes_gcm(payload, combined_key, iv)
-                src = {}
-                for source in json.loads(result).get('sources', []):
-                    video_url = source.get('url', '').replace('\\u0026', '&')
-                    label = source.get('label', '')
-                    src[label] = video_url
-
-                video_url = utils.prefquality(src, sort_by=lambda x: 2160 if x == '4k' else int(x[:-1]), reverse=True)
-                if video_url:
-                    vp.play_from_direct_link(video_url)
-                    vp.progress.close()
-                    return
+            vp.play_from_link_to_resolve(embed_url)
     else:
         utils.notify('Oh oh', 'No video found')
 

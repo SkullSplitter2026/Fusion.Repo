@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<addon id="plugin.program.sKullsDBbackup" name="[B][COLOR indianred]sKulls[/COLOR] [COLOR gold]DB[/COLOR] [COLOR indianred]Backup[/COLOR][/B]" version="1.0.5" provider-name="[COLOR indianred]sKulls[/COLOR] [COLOR gold]inc.[/COLOR]">
+    <requires>
+        <import addon="xbmc.python" version="3.0.0" />
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="addon_entry.py">
+        <provides>executable</provides>
+    </extension>
+    <extension point="xbmc.service" library="service.py" />
+    <extension point="xbmc.addon.metadata">
+        <reuselanguageinvoker>true</reuselanguageinvoker>
+        <platform>all</platform>
+        <summary lang="de_DE">sKulls DB Backup</summary>
+        <description lang="de_DE">Backup und Wiederherstellung von Kodi Datenbanken</description>
+        <summary lang="en_GB">sKulls DB Backup</summary>
+        <description lang="en_GB">Backup and restore Kodi databases</description>
+        <license>GPL-3.0-or-later</license>
+        <assets>
+            <icon>resources/media/icon.png</icon>
+            <fanart>resources/media/fanart.jpg</fanart>
+        </assets>
+    </extension>
+</addon>

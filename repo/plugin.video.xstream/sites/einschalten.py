@@ -7,9 +7,11 @@
 # showEntries:    6 Stunden
 # showEpisodes:   4 Stunden
 
-from resources.lib.handler.ParameterHandler import ParameterHandler
+import xbmcgui
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
-from resources.lib.tools import logger, cParser
+from resources.lib.logger import logger
+from resources.lib.tools import cParser
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.config import cConfig
 from resources.lib.gui.gui import cGui
@@ -38,11 +40,12 @@ URL_THUMBNAIL = URL_MAIN + '/api/image/poster'
 
 def load(): # Menu structure of the site plugin
     logger.info('Load %s' % SITE_NAME)
+    xbmcgui.Window(10000).clearProperty('xstream.einschalten.lastSearchText')
     params = ParameterHandler()
     params.setParam('sUrl', URL_NEW_MOVIES)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30541), SITE_IDENTIFIER, 'showEntries'), params)  # New Movies
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30501), SITE_IDENTIFIER, 'showEntries'), params)  # Aktuelle Releases
     params.setParam('sUrl', URL_LAST_MOVIES)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30549), SITE_IDENTIFIER, 'showEntriesLast'), params)  # Recently added movies
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30500), SITE_IDENTIFIER, 'showEntriesLast'), params)  # Neues
     params.setParam('sUrl', URL_COLLECTIONS)
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30543), SITE_IDENTIFIER, 'showCollections'), params)  # Collections
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Search
@@ -54,8 +57,6 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False):
     params = ParameterHandler()
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     iPage = int(params.getValue('page'))
     
     # Check if URL already has parameters to decide between ? and &
@@ -100,8 +101,6 @@ def showCollections(entryUrl=False, sGui=False, sSearchText=False):
     params = ParameterHandler()
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     iPage = int(params.getValue('page'))
     
     separator = '&' if '?' in entryUrl else '?'
@@ -144,8 +143,6 @@ def showCollectionEntries(sGui=False, sSearchText=False):
     params = ParameterHandler()
     entryUrl = URL_COLLECTIONS + '/' + params.getValue('entryUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     sHtmlContent = oRequest.request()
     pattern = '{"id":([^,"]+).*?title":"([^"]+).*?Date":"([^-]+).*?"posterPath":"([^"]+).*?collectionId":([^}]+)'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
@@ -175,8 +172,6 @@ def showEntriesLast(entryUrl=False, sGui=False, sSearchText=False):
     params = ParameterHandler()
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     iPage = int(params.getValue('page'))
     
     separator = '&' if '?' in entryUrl else '?'
@@ -240,8 +235,12 @@ def getHosterUrl(sUrl=False):
 
 
 def showSearch():
-    sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30287))
-    if not sSearchText: return
+    win = xbmcgui.Window(10000)
+    sSearchText = win.getProperty('xstream.einschalten.lastSearchText')
+    if not sSearchText:
+        sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30287))
+        if not sSearchText: return
+        win.setProperty('xstream.einschalten.lastSearchText', sSearchText)
     _search(False, sSearchText)
     cGui().setEndOfDirectory()
 

@@ -26,9 +26,8 @@ from six.moves import urllib_parse
 
 class EmbedojoResolver(ResolveUrl):
     name = 'Embedojo'
-    domains = ['embedojo.net', 'embedplayer1.xyz', 'llanfairpwllgwyngyll.com', 'llanfairpwllgwyngy.com']
-    pattern = r'(?://|\.)((?:embed(?:ojo|player1)|llanfairpwllgwyngyl*)\.(?:net|xyz|com))/([0-9a-zA-Z$:/.-_]+)'
-
+    domains = ['embedojo.net', 'embedplayer1.xyz', 'llanfairpwllgwyngyll.com', 'llanfairpwllgwyngy.com', 'kisscloud.online']
+    pattern = r'(?://|\.)((?:embed(?:ojo|player1)|llanfairpwllgwyngyl*|kisscloud)\.(?:net|xyz|com|online))/([0-9a-zA-Z$:/.-_]+)'
     def get_media_url(self, host, media_id, subs=False):
         if '$$' in media_id:
             media_id, referer = media_id.split('$$')
@@ -39,7 +38,7 @@ class EmbedojoResolver(ResolveUrl):
         web_url = self.get_url(host, media_id)
         if not ref:
             ref = urllib_parse.urljoin(web_url, '/')
-        headers = {'User-Agent': common.FF_USER_AGENT,
+        headers = {'User-Agent': common.RAND_UA,
                    'Referer': ref}
         resp = self.net.http_GET(web_url, headers=headers)
         if web_url != resp.get_url():

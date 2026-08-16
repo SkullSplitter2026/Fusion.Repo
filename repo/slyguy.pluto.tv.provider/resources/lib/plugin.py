@@ -1,3 +1,4 @@
+from urllib.parse import parse_qsl
 import uuid
 import codecs
 
@@ -7,8 +8,8 @@ from slyguy.session import Session
 from slyguy.exceptions import PluginError
 
 from .language import _
-from .constants import ALT_USER_AGENT
-from .settings import settings, DATA_URL, ALL, MY_CHANNELS, UUID_NAMESPACE, PLAYBACK_URL
+from .constants import ALT_USER_AGENT,  DATA_URL, ALL, MY_CHANNELS, UUID_NAMESPACE, URL
+from .settings import settings
 
 
 @plugin.route('')
@@ -209,11 +210,25 @@ def search(query, page, **kwargs):
     return _process_channels(results), False
 
 
-def _get_url(id):
-    url = PLAYBACK_URL.format(id=id)
-    url = Session().head(url).headers.get('location', url)
+@mem_cache.cached(60*30)
+def _get_jwt():
     device_id = str(uuid.uuid3(uuid.UUID(UUID_NAMESPACE), str(uuid.getnode())))
-    return url.replace('%7BPSID%7D', device_id).replace('{PSID}', device_id)
+    PLUTO_PARAMS = {
+        'deviceId': device_id,
+        'deviceMake': 'Chrome',
+        'deviceType': 'web',
+        'deviceVersion': '114.0.0',
+        'deviceModel': 'web',
+        'DNT': '0',
+        'appName': 'web',
+        'appVersion': '7.2.0-57e9a96fe7f66354de7957efff20f469e6772404',
+        'serverSideAds': 'false',
+        'drmCapabilities': 'widevine:L3',
+        'clientID': device_id,
+        'clientModelNumber': '1.0.0',
+    }
+    data = Session().get('https://boot.pluto.tv/v4/start', params=PLUTO_PARAMS).json()
+    return data['stitcherParams'], data['sessionToken']
 
 
 @plugin.route()
@@ -229,6 +244,7 @@ def play(id, **kwargs):
     if settings.ALT_USER_AGENT.value:
         headers['user-agent'] = ALT_USER_AGENT
 
+    params, jwt = _get_jwt()
     return plugin.Item(
         label = channel['name'],
         info = {'plot': channel.get('description')},
@@ -239,7 +255,7 @@ def play(id, **kwargs):
         ),
         proxy_data = {'subs_whitelist': 'no-match'}, # subs cause freezing (https://github.com/xbmc/inputstream.adaptive/issues/1831)
         headers = headers,
-        path = _get_url(id),
+        path = URL.format(id=id, stitcher_params=params, token=jwt),
     )
 
 

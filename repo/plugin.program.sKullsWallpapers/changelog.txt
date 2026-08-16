@@ -1,0 +1,33 @@
+v1.3.1 (2026-06-08)
+- Download-Pfad wahlbar per Explorer oder manuelle Eingabe
+- Genre Manager Buttons in Settings gefixt
+- Default Download-Pfad auf special://profile/Wallpaper geaendert
+
+v1.3.0 (2026-06-08)
+- Genre-Verwaltung für Downloads
+- Download mit Genre-Auswahl
+- Wallpaper per Context-Menu in Genre verschieben
+- Import mit Genre-Zuordnung
+- Set-Download mit Genre-Unterstützung
+- Modulare Code-Struktur (Refactoring)
+- Bugfixes
+
+v1.2.3
+- Custom Sources (eigene Quellen)
+- Auflösungs-Filter
+- Farbige UI
+- Bugfixes
+
+v1.2.0
+- Diashow-Modus
+- Wallpaper-Set
+- Farbige Menü-Labels
+- Eigene Icons
+
+v1.1.x
+- Suchverlauf
+- Zufalls-Wallpaper
+- Favoriten
+
+v1.0.x
+- Erste Version (Fork von plugin.video.4kwallpapers)

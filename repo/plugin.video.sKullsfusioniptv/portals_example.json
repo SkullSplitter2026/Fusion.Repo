@@ -1,0 +1,28 @@
+{
+    "portals": [
+        {
+            "id": 1,
+            "name": "Portal 1",
+            "server_address": "http://example.com/c/",
+            "mac_address": "00:1A:79:XX:XX:XX",
+            "serial_number": "12345678",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        },
+        {
+            "id": 2,
+            "name": "Portal 2",
+            "server_address": "http://example2.com/c/",
+            "mac_address": "00:1A:79:YY:YY:YY",
+            "serial_number": "87654321",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+    ]
+}

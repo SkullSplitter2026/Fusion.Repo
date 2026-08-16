@@ -1,0 +1,1942 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+<title>Kodi Android Web File Explorer – Desktop</title>
+
+<!-- Web App & Icons -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%234e8bb0'/%3E%3Ctext x='50' y='75' font-size='60' text-anchor='middle' fill='white' font-family='monospace'%3E📁%3C/text%3E%3C/svg%3E" />
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%234e8bb0'/%3E%3Ctext x='50' y='75' font-size='60' text-anchor='middle' fill='white' font-family='monospace'%3E📁%3C/text%3E%3C/svg%3E" />
+<meta name="theme-color" content="#4e8bb0" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Kodi Explorer" />
+
+<style>
+:root {
+  --bg-start: #7fc1e8;
+  --bg-end: #4e8bb0;
+  --card: #ffffff;
+  --card-alt: #fefcf9;
+  --text: #1e2a3a;
+  --text-muted: #5d6e85;
+  --border: #cbd5e1;
+  --accent: #4e8bb0;
+  --accent-dark: #2c5c7a;
+  --danger: #e05a5a;
+  --danger-dark: #c0392b;
+  --ok: #2e7d32;
+  --shadow: 0 12px 28px rgba(0, 0, 0, 0.12);
+  --radius: 24px;
+}
+* {
+  box-sizing: border-box;
+}
+html, body {
+  height: 100%;
+}
+body {
+  margin: 20px;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  background: linear-gradient(145deg, var(--bg-start), var(--bg-end));
+  color: var(--text);
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+h1 {
+  font-size: 1.5rem;
+  margin: 0;
+  font-weight: 600;
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.1);
+}
+.server-info {
+  font-size: 0.9rem;
+  color: #eef4ff;
+}
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.btn {
+  padding: 8px 16px;
+  border-radius: 40px;
+  border: 1px solid rgba(255,255,255,0.3);
+  background: var(--card-alt);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  color: var(--text);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+.btn:hover {
+  background: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+.btn:active {
+  transform: translateY(0);
+}
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: default;
+  transform: none;
+}
+.btn-danger {
+  background: var(--danger);
+  border-color: var(--danger-dark);
+  color: white;
+}
+.btn-danger:hover {
+  background: var(--danger-dark);
+  border-color: var(--danger-dark);
+}
+.filelist.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.row:last-child {
+  border-bottom: none;
+}
+.filename {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+.thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+  background: #f1f3f5;
+}
+.name {
+  font-size: 1rem;
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+.name-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+.name.marquee:hover .name-inner {
+  animation: marquee 10s linear infinite;
+}
+@keyframes marquee {
+  0% { transform: translateX(0); }
+  30% { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.meta {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 8px;
+}
+.dir {
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-left: 12px; /* zusätzlicher Abstand zum Meta-Text */
+}
+.menu-wrap {
+  position: relative;
+}
+.menu-btn {
+  padding: 6px 10px;
+  border-radius: 30px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.menu {
+  position: fixed;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow);
+  display: none;
+  min-width: 200px;
+  overflow: hidden;
+  z-index: 9999;
+}
+.menu.open {
+  display: block;
+}
+.menu .mi {
+  padding: 10px 16px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.menu .mi:last-child {
+  border-bottom: none;
+}
+.menu .mi:active {
+  background: #f8f9fa;
+}
+.menu .mi.danger {
+  color: var(--danger);
+}
+.progress-wrap {
+  margin-top: 16px;
+  display: none;
+}
+.progress-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+progress {
+  flex: 1;
+  height: 10px;
+  border-radius: 10px;
+  background: #e9ecef;
+  appearance: none;
+}
+progress::-webkit-progress-bar {
+  background: #e9ecef;
+  border-radius: 10px;
+}
+progress::-webkit-progress-value {
+  background: var(--ok);
+  border-radius: 10px;
+}
+.transfer-info {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.footer {
+  margin-top: 20px;
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+/* Toasts */
+.toast-wrap {
+  position: fixed;
+  right: 16px;
+  bottom: calc(16px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 10000;
+}
+.toast {
+  background: var(--card);
+  border-left: 4px solid var(--accent);
+  padding: 10px 14px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  min-width: 220px;
+  font-size: 0.85rem;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.toast.ok {
+  border-left-color: var(--ok);
+}
+.toast.err {
+  border-left-color: var(--danger);
+}
+/* Modals */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  backdrop-filter: blur(2px);
+}
+.modal-card {
+  background: var(--card);
+  border-radius: 28px;
+  padding: 20px;
+  width: 90vw;
+  max-width: 960px;
+  max-height: 90vh;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+.modal h3 {
+  margin: 0;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+.modal h3 .title-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+.modal h3 .title-name-inner {
+  display: inline-block;
+  white-space: nowrap;
+  will-change: transform;
+}
+.modal h3 .title-name.marquee .title-name-inner {
+  animation: marquee 10s linear infinite;
+}
+#editorContent {
+  width: 100%;
+  min-height: 260px;
+  max-height: 65vh;
+  resize: vertical;
+  background: #1e2a2f;
+  color: #f0f3f5;
+  padding: 12px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 13px;
+}
+.CodeMirror {
+  height: 100%;
+  overflow: auto;
+  border-radius: 16px;
+}
+.buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  margin-top: 8px;
+  flex-shrink: 0;
+}
+.editor-buttons {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: auto;
+  padding-top: 12px;
+  flex-shrink: 0;
+}
+.editor-buttons .buttons-left,
+.editor-buttons .buttons-right {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.modal-card.editor-full {
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  border-radius: 0;
+  padding: 12px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+}
+.modal-card.editor-full #editorContent,
+.modal-card.editor-full .CodeMirror {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+  max-height: none;
+}
+#mediaContainer {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#mediaContainer img,
+#mediaContainer video,
+#mediaContainer audio {
+  max-width: 100%;
+  max-height: 70vh;
+  display: block;
+  margin: 0 auto;
+}
+.modal-card.media-full {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  border-radius: 0;
+  padding: 12px;
+}
+.modal-card.media-full #mediaContainer {
+  flex: 1;
+  max-height: none;
+}
+.modal-card.media-full #mediaContainer img,
+.modal-card.media-full #mediaContainer video {
+  max-height: calc(100vh - 100px);
+}
+.button.danger, .btn.danger {
+  background: var(--danger);
+  color: white;
+  border: none;
+}
+.button.danger:hover, .btn.danger:hover {
+  background: var(--danger-dark);
+}
+@media (max-width: 768px) {
+  body {
+    margin: 12px;
+  }
+  .controls {
+    gap: 8px;
+  }
+  .btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+}
+</style>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/shell/shell.min.js"></script>
+<style>
+/* zusätzliche Safe-Area-Anpassungen */
+html, body {
+  height: 100%;
+}
+@supports (height: 100dvh) {
+  .app, .main, .viewer, .editor, .fullscreen, body {
+    min-height: 100dvh;
+  }
+}
+img:fullscreen, video:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-width: 100vw !important;
+  max-height: 100vh !important;
+  object-fit: contain;
+  margin: 0;
+  padding: 0;
+  background: #000;
+}
+:fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+}
+.safe-bottom,
+.footer,
+.toolbar,
+.controls,
+.editor-actions {
+  padding-bottom: calc(12px + env(safe-area-inset-bottom));
+}
+body {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Kodi Android Web File Explorer – Desktop</h1>
+  <div class="server-info">
+    <strong id="rootLabel">Android Root</strong>: <span id="pathDisplay">/</span>
+  </div>
+</div>
+
+<div class="controls">
+  <button id="rootAndroid" class="btn">Android Root</button>
+  <button id="rootKodi" class="btn">Kodi Root</button>
+  <button id="uploadBtn" class="btn">Datei hochladen</button>
+  <button id="zipNoRootBtn" class="btn">Verzeichnis Inhalt ZIP Download</button>
+  <button id="clearDirBtn" class="btn btn-danger">Verzeichnis Inhalt löschen</button>
+  <button id="pasteBtn" class="btn" disabled>Einfügen</button>
+</div>
+
+<div class="filelist card" id="filelistCard">
+  <div id="filelist"></div>
+</div>
+
+<div class="progress-wrap" id="transferArea">
+  <div class="progress-row">
+    <progress id="transferProgress" value="0" max="100"></progress>
+    <button id="cancelBtn" class="btn btn-danger" style="display:none;">Abbrechen</button>
+  </div>
+  <div class="transfer-info"><span id="transferPercent"></span></div>
+</div>
+
+<div class="footer">
+  <button id="quitBtn" class="btn btn-danger">Kodi beenden</button>
+  <button id="appinfoBtn" class="btn">App-Info öffnen</button>
+  <button id="closeServerBtn" class="btn">Server schließen</button>
+</div>
+
+<!-- Upload-Dialog für ZIP -->
+<div class="modal" id="zipUploadChoice">
+  <div class="modal-card">
+    <h3>ZIP-Upload</h3>
+    <div>Wie soll die ZIP-Datei verarbeitet werden?</div>
+    <div class="buttons">
+      <button id="zipChoiceUnpack" class="btn" style="background:#4e8bb0;color:#fff">Sofort entpacken</button>
+      <button id="zipChoiceOnly" class="btn">Nur hochladen</button>
+      <button id="zipChoiceCancel" class="btn btn-danger">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Editor-Modal -->
+<div class="modal" id="editorModal">
+  <div class="modal-card" id="editorCard">
+    <h3 id="editorTitle"><span class="title-name"><span class="title-name-inner">Datei öffnen</span></span></h3>
+    <textarea id="editorContent" spellcheck="false"></textarea>
+    <div class="buttons editor-buttons">
+      <div class="buttons-left"><button id="editorCancel" class="btn">Abbrechen</button></div>
+      <div class="buttons-right"><button id="editorFullscreen" class="btn">Vollbild</button><button id="editorSave" class="btn">Speichern</button></div>
+    </div>
+  </div>
+</div>
+
+<!-- Media-Modal -->
+<div class="modal" id="mediaModal">
+  <div class="modal-card" id="mediaCard">
+    <h3 id="mediaTitle"><span class="title-name"><span class="title-name-inner">Medienwiedergabe</span></span></h3>
+    <div id="mediaContainer"></div>
+    <div class="buttons media-buttons">
+      <div class="buttons-left"><button id="mediaClose" class="btn">Schließen</button></div>
+      <div class="buttons-right"><button id="mediaFullscreen" class="btn">Vollbild</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script>
+// ============================================================
+// Kodi Android Web File Explorer – Desktop (optimiert)
+// ============================================================
+(async function(){
+  // DOM-Elemente
+  const rootLabel = document.getElementById('rootLabel');
+  const pathDisplay = document.getElementById('pathDisplay');
+  const filelistEl = document.getElementById('filelist');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const rootAndroid = document.getElementById('rootAndroid');
+  const rootKodi = document.getElementById('rootKodi');
+  const quitBtn = document.getElementById('quitBtn');
+  const appinfoBtn = document.getElementById('appinfoBtn');
+  const closeServerBtn = document.getElementById('closeServerBtn');
+  const transferArea = document.getElementById('transferArea');
+  const transferProgress = document.getElementById('transferProgress');
+  const transferPercent = document.getElementById('transferPercent');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const zipNoRootBtn = document.getElementById('zipNoRootBtn');
+  const clearDirBtn = document.getElementById('clearDirBtn');
+  const pasteBtn = document.getElementById('pasteBtn');
+  const zipDialog = document.getElementById('zipUploadChoice');
+  const zipChoiceUnpack = document.getElementById('zipChoiceUnpack');
+  const zipChoiceOnly = document.getElementById('zipChoiceOnly');
+  const zipChoiceCancel = document.getElementById('zipChoiceCancel');
+  const toastWrap = document.getElementById('toastWrap');
+  const editorModal = document.getElementById('editorModal');
+  const editorCard = document.getElementById('editorCard');
+  const editorTitle = document.getElementById('editorTitle');
+  const editorContent = document.getElementById('editorContent');
+  const editorSave = document.getElementById('editorSave');
+  const editorCancel = document.getElementById('editorCancel');
+  const editorFullscreen = document.getElementById('editorFullscreen');
+  const mediaModal = document.getElementById('mediaModal');
+  const mediaCard = document.getElementById('mediaCard');
+  const mediaTitle = document.getElementById('mediaTitle');
+  const mediaContainer = document.getElementById('mediaContainer');
+  const mediaClose = document.getElementById('mediaClose');
+  const mediaFullscreen = document.getElementById('mediaFullscreen');
+
+  // Globale Zustände
+  let currentPath = '';
+  let currentRootName = 'Android';
+  let activeTransfer = false;
+  let clipHas = false;
+  let clipName = '';
+  let pendingZipFile = null;
+  let currentTask = null;
+
+  let editorRelpath = null;
+  let editorFilename = null;
+  let editorDirPath = '';
+  let cmEditor = null;
+  let editorFull = false;
+  let mediaFull = false;
+
+  const floatingMenu = document.createElement('div');
+  floatingMenu.className = 'menu';
+  document.body.appendChild(floatingMenu);
+  let menuAnchorBtn = null;
+
+  // Erweiterte Liste editierbarer Dateitypen (Textformate)
+  const READABLE_EXT = [
+    '.txt','.log','.xml','.json','.nfo','.ini','.cfg','.conf','.properties',
+    '.py','.pyw','.js','.ts','.css','.html','.htm','.xhtml','.php','.phtml',
+    '.md','.markdown','.sh','.bash','.zsh','.fish','.ps1','.psm1','.bat','.cmd',
+    '.yml','.yaml','.toml','.ini','.cfg','.conf','.editorconfig','.gitignore','.dockerignore',
+    '.prettierrc','.eslintrc','.babelrc','.browserslistrc','.npmrc','.yarnrc','.tmpl','.tpl',
+    '.ejs','.hbs','.scss','.sass','.less','.styl','.vue','.svelte','.astro','.jsx','.tsx',
+    '.c','.cpp','.cc','.cxx','.h','.hpp','.hxx','.java','.kt','.kts','.swift','.go','.rs',
+    '.rb','.lua','.sql','.graphql','.prisma','.json5','.gradle','.makefile','.cmake',
+    '.clang-format','.clang-tidy','.gitattributes','.mailmap','.rst','.tex','.bib','.csv','.tsv',
+    '.m3u','.m3u8','.pls','.po','.pot','.strm','.service','.desktop','.list','.env','.inputrc',
+    '.vimrc','.zshrc','.bashrc','.gitconfig'
+  ];
+  const IMAGE_EXT = ['.png','.jpg','.jpeg','.gif','.webp','.bmp','.svg'];
+  const VIDEO_EXT = ['.mp4','.mkv','.webm','.avi','.mov','.flv','.wmv','.m4v'];
+  const AUDIO_EXT = ['.mp3','.flac','.ogg','.wav','.m4a','.aac'];
+  const MAX_VIEW_BYTES = 2 * 1024 * 1024;
+
+  function isReadableName(name){
+    if(!name) return false;
+    const lower = name.toLowerCase();
+    return READABLE_EXT.some(ext => lower.endsWith(ext));
+  }
+  function isImageName(name){
+    if(!name) return false;
+    const lower = name.toLowerCase();
+    return IMAGE_EXT.some(ext => lower.endsWith(ext));
+  }
+  function isVideoName(name){
+    if(!name) return false;
+    const lower = name.toLowerCase();
+    return VIDEO_EXT.some(ext => lower.endsWith(ext));
+  }
+  function isAudioName(name){
+    if(!name) return false;
+    const lower = name.toLowerCase();
+    return AUDIO_EXT.some(ext => lower.endsWith(ext));
+  }
+
+  // Hilfsfunktionen
+  function toast(msg, type='ok', timeout=3000){
+    const d = document.createElement('div');
+    d.className = 'toast ' + (type === 'error' || type==='err' ? 'err' : 'ok');
+    d.textContent = msg;
+    toastWrap.appendChild(d);
+    setTimeout(()=>{ d.style.opacity='0'; d.style.transform='translateY(6px)'; }, timeout);
+    setTimeout(()=>{ d.remove(); }, timeout+600);
+  }
+
+  function humanSize(n){
+    if(!n || n<=0) return '0 B';
+    const k=1024, units=['B','KB','MB','GB','TB'];
+    const i = Math.floor(Math.log(n)/Math.log(k));
+    const v = n/Math.pow(k,i);
+    return (v>=100? v.toFixed(0): v>=10? v.toFixed(1): v.toFixed(2)) + ' ' + units[i];
+  }
+
+  function yieldFrame(){ return new Promise(r => setTimeout(r,0)); }
+
+  function setPathDisplay(){
+    const disp = currentPath ? ('/' + currentPath) : '/';
+    rootLabel.textContent = (currentRootName === 'Kodi' ? 'Kodi Root' : 'Android Root');
+    pathDisplay.textContent = disp;
+  }
+
+  function setPasteState(has, name){
+    clipHas = !!has;
+    clipName = name || '';
+    pasteBtn.disabled = !clipHas;
+    pasteBtn.title = clipHas ? ('Einfügen: ' + clipName) : 'Zwischenablage leer';
+  }
+
+  function setBusy(on, label){
+    activeTransfer = !!on;
+    const disable = on;
+    [uploadBtn, zipNoRootBtn, clearDirBtn, pasteBtn, rootAndroid, rootKodi, closeServerBtn]
+      .forEach(b => { if(b) b.disabled = disable; });
+    transferArea.style.display = on ? 'block' : 'none';
+    cancelBtn.style.display = on ? 'inline-block' : 'none';
+    if(on){
+      transferPercent.textContent = label || '';
+      try { transferProgress.removeAttribute('value'); } catch(_){}
+    }else{
+      transferProgress.max = 100;
+      transferProgress.value = 0;
+      transferPercent.textContent = '';
+      pasteBtn.disabled = !clipHas;
+      currentTask = null;
+      cancelBtn.style.display = 'none';
+    }
+  }
+
+  // Menü
+  function closeMenu(){
+    floatingMenu.classList.remove('open');
+    floatingMenu.style.display = 'none';
+    menuAnchorBtn = null;
+  }
+
+  function openMenuFor(btn, items){
+    floatingMenu.innerHTML = '';
+    items.forEach(x => {
+      const mi = document.createElement('div');
+      mi.className = 'mi' + (x.danger ? ' danger' : '');
+      mi.textContent = x.label;
+      mi.onclick = async (e) => {
+        e.stopPropagation();
+        closeMenu();
+        await x.onClick();
+      };
+      floatingMenu.appendChild(mi);
+    });
+    floatingMenu.style.display = 'block';
+    floatingMenu.classList.add('open');
+    const rect = btn.getBoundingClientRect();
+    const menuRect = floatingMenu.getBoundingClientRect();
+    const margin = 8;
+    let top = rect.bottom + margin;
+    let left = Math.min(window.innerWidth - menuRect.width - margin, rect.right - menuRect.width);
+    if (top + menuRect.height > window.innerHeight - margin) {
+      top = Math.max(margin, rect.top - margin - menuRect.height);
+    }
+    if (left < margin) left = margin;
+    floatingMenu.style.top = `${Math.round(top)}px`;
+    floatingMenu.style.left = `${Math.round(left)}px`;
+    menuAnchorBtn = btn;
+  }
+
+  document.addEventListener('click', () => closeMenu(), {passive:true});
+  window.addEventListener('scroll', () => closeMenu(), {passive:true});
+  window.addEventListener('resize', () => closeMenu());
+
+  // Editor & CodeMirror
+  function getModeFromFilename(name){
+    if(!name) return 'text/plain';
+    const lower = name.toLowerCase();
+    if(lower.endsWith('.js') || lower.endsWith('.ts')) return 'javascript';
+    if(lower.endsWith('.py') || lower.endsWith('.pyw')) return 'python';
+    if(lower.endsWith('.css')) return 'css';
+    if(lower.endsWith('.html') || lower.endsWith('.htm') || lower.endsWith('.xml')) return 'xml';
+    if(lower.endsWith('.md')) return 'markdown';
+    if(lower.endsWith('.sh') || lower.endsWith('.bat')) return 'shell';
+    return 'text/plain';
+  }
+
+  function ensureCodeMirror(content, filename){
+    if(cmEditor){
+      cmEditor.setValue(content || '');
+      cmEditor.setOption('mode', getModeFromFilename(filename || ''));
+      cmEditor.refresh();
+      return;
+    }
+    cmEditor = CodeMirror.fromTextArea(editorContent, {
+      lineNumbers:true,
+      lineWrapping:false,
+      theme:'material-darker',
+      mode:getModeFromFilename(filename || ''),
+      indentUnit:2,
+      tabSize:2,
+      indentWithTabs:false
+    });
+    cmEditor.setValue(content || '');
+    setTimeout(()=>cmEditor.refresh(), 50);
+  }
+
+  function getEditorValue(){
+    if(cmEditor) return cmEditor.getValue();
+    return editorContent.value;
+  }
+
+  function updateEditorTitleMarquee(){
+    if(!editorTitle) return;
+    const outer = editorTitle.querySelector('.title-name');
+    const inner = editorTitle.querySelector('.title-name-inner');
+    if(!outer || !inner) return;
+    outer.classList.remove('marquee');
+    inner.style.transform = 'none';
+    const cw = outer.clientWidth;
+    const sw = inner.scrollWidth;
+    if(sw > cw + 10){
+      outer.classList.add('marquee');
+    }
+  }
+
+  function openEditor(title, text, relpath, name){
+    const inner = editorTitle.querySelector('.title-name-inner');
+    if(inner) inner.textContent = title || 'Datei öffnen';
+    editorRelpath = relpath || null;
+    editorFilename = name || null;
+    editorDirPath = currentPath || '';
+    editorModal.style.display = 'flex';
+    editorCard.classList.remove('editor-full');
+    editorFull = false;
+    ensureCodeMirror(text || '', name || '');
+    setTimeout(updateEditorTitleMarquee, 50);
+  }
+  function closeEditor(){
+    editorModal.style.display = 'none';
+    editorRelpath = null;
+    editorFilename = null;
+    editorDirPath = '';
+  }
+  editorCancel.onclick = closeEditor;
+  editorModal.addEventListener('click', e => {
+    if(e.target === editorModal) closeEditor();
+  });
+
+  editorFullscreen.onclick = () => {
+    editorFull = !editorFull;
+    if(editorFull){
+      editorCard.classList.add('editor-full');
+    } else {
+      editorCard.classList.remove('editor-full');
+    }
+    if(cmEditor) setTimeout(()=>cmEditor.refresh(), 50);
+  };
+
+  editorSave.onclick = async () => {
+    if(!editorFilename){
+      toast('Kein Dateiname zum Speichern bekannt', 'error');
+      return;
+    }
+    const content = getEditorValue();
+    const targetPath = editorDirPath || currentPath || '';
+    try{
+      setBusy(true, 'Speichere Datei...');
+      const blob = new Blob([content || ''], {type:'text/plain;charset=utf-8'});
+      const form = new FormData();
+      form.append('file', blob, editorFilename);
+      const resp = await fetch('/upload?path=' + encodeURIComponent(targetPath), {
+        method: 'POST',
+        body: form
+      });
+      let j = {};
+      try { j = await resp.json(); } catch(_){}
+      if(resp.ok){
+        toast((j && j.message) ? j.message : 'Datei gespeichert', 'ok', 2200);
+        closeEditor();
+        await loadPath(currentPath);
+      } else {
+        toast((j && j.message) ? ('Speichern fehlgeschlagen: ' + j.message) : 'Speichern fehlgeschlagen', 'error');
+      }
+    }catch(e){
+      toast('Fehler beim Speichern', 'error');
+      console.error(e);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  // Media
+  function updateMediaTitleMarquee(){
+    if(!mediaTitle) return;
+    const outer = mediaTitle.querySelector('.title-name');
+    const inner = mediaTitle.querySelector('.title-name-inner');
+    if(!outer || !inner) return;
+    outer.classList.remove('marquee');
+    inner.style.transform = 'none';
+    const cw = outer.clientWidth;
+    const sw = inner.scrollWidth;
+    if(sw > cw + 10){
+      outer.classList.add('marquee');
+    }
+  }
+
+  function openMedia(relpath, name){
+    if(!relpath) return;
+    const lower = (name || '').toLowerCase();
+    const url = '/download?path=' + encodeURIComponent(relpath || '');
+    const inner = mediaTitle.querySelector('.title-name-inner');
+    if(inner) inner.textContent = name || 'Medienwiedergabe';
+    mediaContainer.innerHTML = '';
+
+    if(isVideoName(lower)){
+      const vid = document.createElement('video');
+      vid.controls = true;
+      vid.autoplay = true;
+      vid.src = url;
+      mediaContainer.appendChild(vid);
+    } else if(isAudioName(lower)){
+      const aud = document.createElement('audio');
+      aud.controls = true;
+      aud.autoplay = true;
+      aud.src = url;
+      mediaContainer.appendChild(aud);
+    } else if(isImageName(lower)){
+      const img = document.createElement('img');
+      img.src = url;
+      img.alt = name || 'Bild';
+      mediaContainer.appendChild(img);
+    } else {
+      const info = document.createElement('div');
+      info.textContent = 'Dieser Dateityp wird nicht direkt unterstützt.';
+      mediaContainer.appendChild(info);
+    }
+
+    mediaFull = false;
+    mediaCard.classList.remove('media-full');
+    mediaModal.style.display = 'flex';
+    setTimeout(updateMediaTitleMarquee, 50);
+  }
+  function closeMedia(){
+    mediaModal.style.display = 'none';
+    mediaContainer.innerHTML = '';
+  }
+  mediaClose.onclick = closeMedia;
+  mediaModal.addEventListener('click', e => {
+    if(e.target === mediaModal) closeMedia();
+  });
+
+  mediaFullscreen.onclick = () => {
+    mediaFull = !mediaFull;
+    if(mediaFull){
+      mediaCard.classList.add('media-full');
+    } else {
+      mediaCard.classList.remove('media-full');
+    }
+  };
+
+  // Datei zum Editieren öffnen
+  async function openFileForEdit(relpath, name){
+    try{
+      setBusy(true, 'Lese Datei...');
+      const url = '/download?path=' + encodeURIComponent(relpath || '');
+      const resp = await fetch(url);
+      if(!resp.ok){
+        const j = await resp.json().catch(()=> ({}));
+        toast(j.message || 'Download fehlgeschlagen', 'error');
+        return;
+      }
+
+      const len = parseInt(resp.headers.get('Content-Length') || '0', 10);
+      if(len && len > MAX_VIEW_BYTES){
+        toast('Datei zu groß zum Bearbeiten (' + humanSize(len) + ')', 'error');
+        return;
+      }
+
+      // Fallback, falls Body nicht lesbar (z.B. bei kleinen Dateien)
+      if(!resp.body){
+        const bytes = new Uint8Array(await resp.arrayBuffer());
+        let text = '';
+        try{
+          const decUtf8 = new TextDecoder('utf-8', {fatal:true});
+          text = decUtf8.decode(bytes);
+        }catch(e){
+          try{
+            const dec1252 = new TextDecoder('windows-1252', {fatal:false});
+            text = dec1252.decode(bytes);
+          }catch(e2){
+            const decUtf8Lenient = new TextDecoder('utf-8', {fatal:false});
+            text = decUtf8Lenient.decode(bytes);
+          }
+        }
+        openEditor(name || 'Datei öffnen', text, relpath, name);
+        return;
+      }
+
+      const reader = resp.body.getReader();
+      const chunks = [];
+      let received = 0;
+
+      if(len > 0){
+        transferProgress.max = 100;
+      } else {
+        transferProgress.removeAttribute('value');
+      }
+
+      while(true){
+        const {done, value} = await reader.read();
+        if(done) break;
+        chunks.push(value);
+        received += value.length;
+
+        if(!len && received > MAX_VIEW_BYTES){
+          toast('Datei zu groß zum Bearbeiten (' + humanSize(received) + ')', 'error');
+          try{ await reader.cancel(); }catch(_){}
+          return;
+        }
+
+        if(len > 0){
+          const pct = Math.min(100, Math.round((received/len)*100));
+          transferProgress.value = pct;
+          transferPercent.textContent = 'Lese Datei: ' + humanSize(received) + ' / ' + humanSize(len) + ' (' + pct + ' %)';
+        } else {
+          transferPercent.textContent = 'Lese Datei: ' + humanSize(received);
+        }
+        if((received & ((1<<20)-1)) === 0) await yieldFrame();
+      }
+
+      let totalLen = 0;
+      for(const c of chunks) totalLen += c.length;
+      const bytes = new Uint8Array(totalLen);
+      let off = 0;
+      for(const c of chunks){
+        bytes.set(c, off);
+        off += c.length;
+      }
+
+      let text = '';
+      try{
+        const decUtf8 = new TextDecoder('utf-8', {fatal:true});
+        text = decUtf8.decode(bytes);
+      }catch(e){
+        try{
+          const dec1252 = new TextDecoder('windows-1252', {fatal:false});
+          text = dec1252.decode(bytes);
+        }catch(e2){
+          const decUtf8Lenient = new TextDecoder('utf-8', {fatal:false});
+          text = decUtf8Lenient.decode(bytes);
+        }
+      }
+      openEditor(name || 'Datei öffnen', text, relpath, name);
+    }catch(e){
+      toast('Fehler beim Lesen der Datei', 'error');
+      console.error(e);
+    }finally{
+      setBusy(false);
+    }
+  }
+
+  // API-Abrufe
+  async function loadInfo(){
+    try{
+      const res = await fetch('/api/info');
+      if(!res.ok) throw 0;
+      const j = await res.json();
+      currentRootName = j.current_root || 'Android';
+      setPathDisplay();
+    }catch(e){}
+  }
+
+  async function loadClip(){
+    try{
+      const res = await fetch('/api/clip');
+      if(!res.ok) throw 0;
+      const j = await res.json();
+      setPasteState(!!j.has, j.name || '');
+    }catch(e){
+      setPasteState(false, '');
+    }
+  }
+
+  function updateMarqueeForName(el){
+    if(!el) return;
+    const inner = el.querySelector('.name-inner');
+    if(!inner) return;
+    el.classList.remove('marquee');
+    inner.style.transform = 'none';
+    const cw = el.clientWidth;
+    const sw = inner.scrollWidth;
+    if(sw > cw + 10){
+      el.classList.add('marquee');
+    }
+  }
+
+  // Video Thumbnail (lazy)
+  function generateVideoThumbnail(videoUrl, callback) {
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.currentTime = 0.5;
+    video.addEventListener('loadeddata', () => {
+      video.currentTime = 0.5;
+    });
+    video.addEventListener('seeked', () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      callback(dataUrl);
+      URL.revokeObjectURL(video.src);
+    });
+    video.addEventListener('error', () => {
+      callback(null);
+      if(video.src) URL.revokeObjectURL(video.src);
+    });
+    video.src = videoUrl;
+  }
+
+  // Dateiliste laden
+  async function loadPath(path){
+    try{
+      const resp = await fetch('/api/list?path=' + encodeURIComponent(path || ''));
+      if(!resp.ok){
+        const err = await resp.json().catch(()=> ({}));
+        toast(err.message || 'Fehler beim Laden des Verzeichnisses', 'error');
+        return;
+      }
+      const data = await resp.json();
+      currentPath = (data.path === '.' ? '' : data.path);
+      currentRootName = data.root_name || currentRootName;
+      setPathDisplay();
+      if(data.clip){ setPasteState(!!data.clip.has, data.clip.name || ''); }
+
+      const frag = document.createDocumentFragment();
+
+      if(currentPath && currentPath !== '.'){
+        const r = document.createElement('div'); r.className = 'row';
+        const left = document.createElement('div'); left.className = 'filename';
+        const btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = '[..] Parent';
+        btn.onclick = () => {
+          const parts = currentPath.split('/').filter(Boolean);
+          parts.pop();
+          loadPath(parts.join('/'));
+        };
+        left.appendChild(btn); r.appendChild(left); frag.appendChild(r);
+      }
+
+      const items = (data.items || []);
+      if(items.length === 0){
+        const r = document.createElement('div'); r.className = 'row';
+        const left = document.createElement('div'); left.className = 'filename';
+        const n = document.createElement('div'); n.className='name'; n.style.color='var(--text-muted)';
+        const span = document.createElement('span');
+        span.className='name-inner';
+        span.textContent='Keine Einträge';
+        n.appendChild(span);
+        left.appendChild(n); r.appendChild(left); frag.appendChild(r);
+      } else {
+        for(const it of items){
+          const r = document.createElement('div'); r.className = 'row';
+          const left = document.createElement('div'); left.className = 'filename';
+
+          if(!it.is_dir && isImageName(it.name)){
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.src = '/download?path=' + encodeURIComponent(it.relpath);
+            img.alt = it.name;
+            img.onerror = () => { img.style.display = 'none'; };
+            left.appendChild(img);
+          } else if(!it.is_dir && isVideoName(it.name)) {
+            const img = document.createElement('img');
+            img.className = 'thumb';
+            img.alt = it.name;
+            img.style.objectFit = 'cover';
+            img.style.background = '#111';
+            img.onclick = (e) => {
+              e.stopPropagation();
+              openMedia(it.relpath, it.name);
+            };
+            left.appendChild(img);
+            // Lazy-Load Thumbnail
+            const observer = new IntersectionObserver((entries) => {
+              entries.forEach(entry => {
+                if(entry.isIntersecting && !img.dataset.thumbLoaded) {
+                  const url = '/download?path=' + encodeURIComponent(it.relpath);
+                  generateVideoThumbnail(url, (thumbUrl) => {
+                    if(thumbUrl) img.src = thumbUrl;
+                    else img.style.display = 'none';
+                  });
+                  img.dataset.thumbLoaded = 'true';
+                  observer.unobserve(img);
+                }
+              });
+            }, { rootMargin: '50px' });
+            observer.observe(img);
+          }
+
+          const nameD = document.createElement('div'); nameD.className='name';
+          const nameInner = document.createElement('span'); nameInner.className='name-inner';
+          nameInner.textContent = it.name + (it.is_dir ? '/' : '');
+          nameD.appendChild(nameInner);
+
+          if(it.is_dir){
+            nameD.classList.add('dir');
+            nameD.onclick = () => loadPath(it.relpath);
+          }
+          const meta = document.createElement('div'); meta.className='meta';
+          meta.textContent = it.is_dir
+            ? ('Ordner' + (it.is_link ? ' (Link)' : ''))
+            : ((it.size ? humanSize(it.size) : '') + (it.is_link ? ' (Link)' : ''));
+          left.appendChild(nameD); left.appendChild(meta);
+
+          const actions = document.createElement('div'); actions.className='actions';
+          const menuWrap = document.createElement('div'); menuWrap.className = 'menu-wrap';
+          const mbtn = document.createElement('button'); mbtn.className = 'menu-btn'; mbtn.textContent = '⋯';
+
+          mbtn.onclick = (e) => {
+            e.stopPropagation();
+            const entries = [];
+
+            if(!it.is_dir && isReadableName(it.name)){
+              entries.push({
+                label:'Öffnen (Anzeigen/Bearbeiten)',
+                onClick: async () => {
+                  if(activeTransfer) return toast('Transfer aktiv','err',1800);
+                  await openFileForEdit(it.relpath, it.name);
+                }
+              });
+            }
+
+            if(!it.is_dir && (isImageName(it.name) || isVideoName(it.name) || isAudioName(it.name))){
+              entries.push({
+                label: isImageName(it.name) ? 'Anzeigen' : 'Abspielen',
+                onClick: () => {
+                  if(activeTransfer) return toast('Transfer aktiv','err',1800);
+                  openMedia(it.relpath, it.name);
+                }
+              });
+            }
+
+            if(it.is_dir){
+              entries.push({
+                label:'ZIP Download',
+                onClick: async () => { startZipAndDownload(it.relpath, true); }
+              });
+            } else {
+              entries.push({
+                label:'Download',
+                onClick: async () => { startDownload(it.relpath, false, undefined); }
+              });
+
+              if(it.name.toLowerCase().endsWith('.zip')){
+                entries.push({
+                  label:'Entpacken',
+                  onClick: async () => {
+                    if(activeTransfer) return toast('Transfer aktiv', 'err', 2000);
+                    try{
+                      await unzipAsync(it.relpath);
+                    }catch(e){
+                      toast('Fehler beim Entpacken', 'error');
+                      console.error(e);
+                    }
+                  }
+                });
+              }
+            }
+
+            entries.push({
+              label:'Kopieren',
+              onClick: async () => {
+                try{
+                  const r2 = await fetch('/copy?path=' + encodeURIComponent(it.relpath));
+                  const j2 = await r2.json().catch(()=>({}));
+                  if(r2.ok){
+                    if(j2 && j2.message) toast(j2.message, 'ok', 2200);
+                    setPasteState(true, it.name);
+                  }else{
+                    toast(j2 && j2.message ? j2.message : 'Kopieren fehlgeschlagen', 'error');
+                  }
+                }catch(e){
+                  toast('Fehler beim Kopieren', 'error');
+                  console.error(e);
+                }
+              }
+            });
+
+            entries.push({
+              label:'Löschen',
+              danger:true,
+              onClick: async () => {
+                if(!confirm('Wirklich löschen?')) return;
+                const resp2 = await fetch('/delete?path=' + encodeURIComponent(it.relpath));
+                const j2 = await resp2.json().catch(()=>({}));
+                if(resp2.ok) {
+                  if(j2 && j2.message) toast(j2.message, 'ok', 2200);
+                  loadPath(currentPath);
+                } else {
+                  toast(j2 && j2.message ? j2.message : 'Löschen fehlgeschlagen', 'error');
+                }
+              }
+            });
+
+            const isOpen = floatingMenu.classList.contains('open') && menuAnchorBtn === mbtn;
+            closeMenu();
+            if(!isOpen){
+              openMenuFor(mbtn, entries);
+            }
+          };
+
+          menuWrap.appendChild(mbtn);
+          actions.appendChild(menuWrap);
+
+          r.appendChild(left); r.appendChild(actions); frag.appendChild(r);
+
+          setTimeout(()=>updateMarqueeForName(nameD), 0);
+        }
+      }
+
+      filelistEl.innerHTML = '';
+      filelistEl.appendChild(frag);
+
+    }catch(e){
+      toast('Netzwerkfehler beim Laden', 'error');
+      console.error(e);
+    }
+  }
+
+  // Download-Funktionen
+  function hasFSA(){
+    try{
+      return !!(window.showSaveFilePicker && window.isSecureContext);
+    }catch(_){ return false; }
+  }
+
+  async function streamToFile(resp, suggestedName){
+    const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
+    const hasTotal = total > 0;
+    const fileHandle = await showSaveFilePicker({
+      suggestedName,
+      types: [{ description: 'Datei', accept: {'*/*': ['.*']} }]
+    });
+    const writable = await fileHandle.createWritable();
+    try{
+      let received = 0;
+      if(!resp.body){
+        const blob = await resp.blob();
+        await writable.write(blob);
+        await writable.close();
+        transferProgress.value = 100; transferPercent.textContent = 'Fertig';
+        return;
+      }
+      const reader = resp.body.getReader();
+      if(!hasTotal){ transferProgress.removeAttribute('value'); }
+      while(true){
+        const {done, value} = await reader.read();
+        if(done) break;
+        await writable.write(value);
+        received += value.length;
+        if(hasTotal){
+          const pct = Math.min(100, Math.round((received/total)*100));
+          transferProgress.value = pct;
+          transferPercent.textContent = 'Download: ' + humanSize(received) + ' / ' + humanSize(total) + ' (' + pct + ' %)';
+        } else {
+          transferPercent.textContent = 'Download: ' + humanSize(received);
+        }
+        if((received & ((1<<20)-1)) === 0) await yieldFrame();
+      }
+      await writable.close();
+      transferProgress.value = 100; transferPercent.textContent = 'Fertig';
+    }catch(e){
+      try{ await writable.abort(); }catch(_){}
+      throw e;
+    }
+  }
+
+  async function readToBlobAndSave(resp, filename){
+    const total = parseInt(resp.headers.get('Content-Length') || '0', 10);
+    const hasTotal = total > 0;
+    if(!resp.body){
+      const blob = await resp.blob();
+      await yieldFrame();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 500);
+      transferProgress.value = 100; transferPercent.textContent = 'Fertig';
+      return;
+    }
+    const reader = resp.body.getReader();
+    const chunks = [];
+    let received = 0;
+    if(!hasTotal){ transferProgress.removeAttribute('value'); }
+    while(true){
+      const {done, value} = await reader.read();
+      if(done) break;
+      chunks.push(value);
+      received += value.length;
+      if(hasTotal){
+        const pct = Math.min(100, Math.round((received/total)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Download: ' + humanSize(received) + ' / ' + humanSize(total) + ' (' + pct + ' %)';
+      } else {
+        transferPercent.textContent = 'Download: ' + humanSize(received);
+      }
+      if((received & ((1<<20)-1)) === 0) await yieldFrame();
+    }
+    await yieldFrame();
+    const blob = new Blob(chunks);
+    chunks.length = 0;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 500);
+    transferProgress.max = 100; transferProgress.value = 100; transferPercent.textContent = 'Fertig';
+  }
+
+  function getFilenameFromDisposition(contentDisposition){
+    if(!contentDisposition) return null;
+    let m = contentDisposition.match(/filename\*\s*=\s*UTF-8''([^;]+)/i);
+    if(m && m[1]){
+      try { return decodeURIComponent(m[1]); } catch(e){ }
+    }
+    m = contentDisposition.match(/filename\s*=\s*"([^"]+)"/i);
+    if(m && m[1]) return m[1];
+    m = contentDisposition.match(/filename\s*=\s*([^;]+)/i);
+    if(m && m[1]) return m[1].trim();
+    return null;
+  }
+
+  async function startDownload(relpath, isDir, includeRoot){
+    if(activeTransfer) return toast('Transfer aktiv', 'err', 1800);
+    setBusy(true, 'Starte Download...');
+    try{
+      const url =
+        '/download?path=' + encodeURIComponent(relpath || '') +
+        (typeof includeRoot === 'boolean'
+          ? ('&includeRoot=' + (includeRoot ? '1' : '0'))
+          : '');
+      const resp = await fetch(url);
+      if(!resp.ok){
+        const j = await resp.json().catch(()=> ({}));
+        toast(j.message || 'Download fehlgeschlagen', 'error');
+        return;
+      }
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const filename = getFilenameFromDisposition(cd) || (isDir ? 'download.zip' : 'download.bin');
+
+      if(hasFSA()){
+        await streamToFile(resp, filename);
+      } else {
+        await readToBlobAndSave(resp, filename);
+      }
+    }catch(e){
+      toast('Fehler beim Download', 'error');
+      console.error(e);
+    } finally {
+      setTimeout(()=>setBusy(false), 50);
+    }
+  }
+
+  async function startZipAndDownload(relDirPath, includeRoot){
+    if(activeTransfer) return toast('Transfer aktiv', 'err', 1800);
+    setBusy(true, 'ZIP wird vorbereitet...');
+    try{
+      const start = await fetch(
+        '/zip_start?path=' + encodeURIComponent(relDirPath || '') +
+        '&includeRoot=' + (includeRoot ? '1' : '0')
+      );
+      if(!start.ok){
+        await startDownload(relDirPath, true, includeRoot);
+        return;
+      }
+      const js = await start.json();
+      if(!js || !js.task_id){
+        await startDownload(relDirPath, true, includeRoot);
+        return;
+      }
+      const taskId = js.task_id;
+      const fileNameHint = js.filename || null;
+      currentTask = {type:'zip', id:taskId};
+
+      transferProgress.max = 100;
+      while(true){
+        await new Promise(r => setTimeout(r, 250));
+        const r = await fetch('/zip_status?task=' + encodeURIComponent(taskId));
+        if(!r.ok){
+          transferPercent.textContent = 'Fehler beim Status';
+          break;
+        }
+        const j = await r.json().catch(()=>({}));
+        const bt = j.bytes_total || 0;
+        const bd = j.bytes_done || 0;
+        const total = j.total || 0;
+        const done = j.done || 0;
+        const state = j.state || 'unknown';
+
+        if(bt > 0){
+          const pct = Math.min(100, Math.round((bd/bt)*100));
+          transferProgress.value = pct;
+          transferPercent.textContent = 'ZIP: ' + humanSize(bd) + ' / ' + humanSize(bt) + ' (' + pct + ' %)';
+        } else if (total > 0) {
+          const pct = Math.min(100, Math.round((done/total)*100));
+          transferProgress.value = pct;
+          transferPercent.textContent = 'ZIP: ' + pct + ' %';
+        } else {
+          transferProgress.removeAttribute('value');
+          transferPercent.textContent = 'Berechne Größe ...';
+        }
+
+        if(state === 'done'){
+          transferProgress.value = 100;
+          transferPercent.textContent = 'ZIP fertig – starte Download...';
+          break;
+        } else if(state === 'error' || state === 'canceled'){
+          transferPercent.textContent = (j && j.message) ? j.message : 'ZIP fehlgeschlagen/abgebrochen';
+          toast(transferPercent.textContent, 'error');
+          setBusy(false);
+          return;
+        }
+      }
+      transferProgress.value = 0;
+      transferPercent.textContent = 'Lade ZIP...';
+      const resp = await fetch('/zip_get?task=' + encodeURIComponent(taskId));
+      if(!resp.ok){
+        const t = await resp.text().catch(()=> '');
+        toast('ZIP-Download fehlgeschlagen' + (t ? (': ' + t) : ''), 'error');
+        return;
+      }
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const filename = getFilenameFromDisposition(cd) || fileNameHint || 'download.zip';
+
+      if(hasFSA()){
+        await streamToFile(resp, filename);
+      } else {
+        await readToBlobAndSave(resp, filename);
+      }
+
+    }catch(e){
+      toast('Fehler beim ZIP-Download', 'error');
+      console.error(e);
+    } finally {
+      setTimeout(()=>setBusy(false), 50);
+    }
+  }
+
+  // Upload
+  function showZipChoice(file){
+    pendingZipFile = file;
+    zipDialog.style.display = 'flex';
+  }
+  function hideZipChoice(){
+    zipDialog.style.display = 'none';
+  }
+
+  function startUpload(file, unpackFlag){
+    if(activeTransfer){ toast('Transfer aktiv', 'err', 1800); return; }
+    if(!file){ toast('Bitte eine Datei auswählen', 'err', 1800); return; }
+
+    setBusy(true, 'Upload läuft...');
+    transferProgress.max = 100;
+    transferProgress.value = 0;
+    transferPercent.textContent = '';
+
+    const form = new FormData(); form.append('file', file, file.name);
+    if(typeof unpackFlag === 'boolean'){
+      form.append('unpack', unpackFlag ? '1' : '0');
+    }
+    const xhr = new XMLHttpRequest();
+    const useAsyncUnpack = (typeof unpackFlag === 'boolean' && unpackFlag === true);
+    xhr.open('POST', '/upload?path=' + encodeURIComponent(currentPath || '') + (useAsyncUnpack ? '&async=1' : ''), true);
+
+    xhr.upload.onprogress = e => {
+      if(e.lengthComputable){
+        const pct = Math.round((e.loaded / e.total) * 100);
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Upload: ' + humanSize(e.loaded) + ' / ' + humanSize(e.total) + ' (' + pct + ' %)';
+      } else {
+        transferProgress.removeAttribute('value');
+        transferPercent.textContent = 'Upload: ' + humanSize(e.loaded);
+      }
+    };
+
+    xhr.onload = async () => {
+      try{
+        const ok = xhr.status >= 200 && xhr.status < 300;
+        let res = {};
+        try { res = JSON.parse(xhr.responseText || '{}'); } catch(_){}
+        if(ok){
+          if(res && res.task_id){
+            currentTask = {type:'unzip', id:res.task_id};
+            await pollUnzip(res.task_id, 'Entpacke...');
+            await loadPath(currentPath);
+            toast('Upload entpackt', 'ok', 1800);
+          } else {
+            if(res && res.message) toast(res.message, 'ok', 2200);
+            await loadPath(currentPath);
+          }
+        } else {
+          toast((res && res.message) ? ('Upload fehlgeschlagen: ' + res.message) : ('Upload fehlgeschlagen: ' + xhr.status), 'error');
+        }
+      }catch(e){
+        console.error(e);
+      } finally {
+        setTimeout(()=>setBusy(false), 50);
+      }
+    };
+
+    xhr.onerror = () => {
+      try{ toast('Netzwerkfehler', 'error'); }
+      finally {
+        setBusy(false);
+      }
+    };
+
+    xhr.send(form);
+  }
+
+  async function unzipAsync(relZipPath){
+    setBusy(true, 'Starte Entpacken...');
+    try{
+      const start = await fetch('/unzip_start?path=' + encodeURIComponent(relZipPath));
+      if(!start.ok){
+        const resp = await fetch('/unzip?path=' + encodeURIComponent(relZipPath));
+        const ok = resp.ok;
+        const j = await resp.json().catch(async () => ({message: await resp.text()}));
+        toast((j && j.message) ? j.message : (ok ? 'Entpackt' : 'Entpacken fehlgeschlagen'), ok ? 'ok' : 'error');
+        await loadPath(currentPath);
+        return;
+      }
+      const js = await start.json();
+      if(!js || !js.task_id){
+        toast('Konnte Entpacken nicht starten', 'error');
+        return;
+      }
+      currentTask = {type:'unzip', id:js.task_id};
+      await pollUnzip(js.task_id, 'Entpacke...');
+      await loadPath(currentPath);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function pollUnzip(taskId, label){
+    transferProgress.max = 100;
+    transferProgress.value = 0;
+    transferPercent.textContent = label || 'Entpacke...';
+
+    while(true){
+      await new Promise(r => setTimeout(r, 250));
+      const r = await fetch('/unzip_status?task=' + encodeURIComponent(taskId));
+      if(!r.ok){
+        transferPercent.textContent = 'Fehler beim Status';
+        break;
+      }
+      const j = await r.json().catch(()=>({}));
+      const bt = j.bytes_total || 0;
+      const bd = j.bytes_done || 0;
+      const total = j.total || 0;
+      const done = j.done || 0;
+      const state = j.state || 'unknown';
+
+      if(bt > 0){
+        const pct = Math.min(100, Math.round((bd/bt)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = (label || 'Entpacke...') + ' ' + humanSize(bd) + ' / ' + humanSize(bt) + ' (' + pct + ' %)';
+      } else if (total > 0) {
+        const pct = Math.min(100, Math.round((done/total)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = (label || 'Entpacke...') + ' ' + pct + ' %';
+      } else {
+        transferProgress.removeAttribute('value');
+        transferPercent.textContent = 'Berechne Größe ...';
+      }
+
+      if(state === 'done'){
+        transferProgress.value = 100;
+        transferPercent.textContent = 'Entpacken fertig';
+        if(j && j.message) toast(j.message, 'ok', 2200);
+        break;
+      } else if(state === 'error' || state === 'canceled'){
+        if(j && j.message) toast(j.message, 'error');
+        else toast('Entpacken abgebrochen/Fehler', 'error');
+        break;
+      }
+    }
+  }
+
+  async function pollCopy(taskId){
+    transferProgress.max = 100;
+    transferProgress.value = 0;
+    transferPercent.textContent = 'Kopiere...';
+
+    while(true){
+      await new Promise(r => setTimeout(r, 250));
+      const r = await fetch('/copy_status?task=' + encodeURIComponent(taskId));
+      if(!r.ok){
+        transferPercent.textContent = 'Fehler beim Status';
+        break;
+      }
+      const j = await r.json().catch(()=>({}));
+      const bt = j.bytes_total || 0;
+      const bd = j.bytes_done || 0;
+      const total = j.total || 0;
+      const done = j.done || 0;
+      const state = j.state || 'unknown';
+
+      if(bt > 0){
+        const pct = Math.min(100, Math.round((bd/bt)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Kopiere: ' + humanSize(bd) + ' / ' + humanSize(bt) + ' (' + pct + ' %)';
+      } else if (total > 0) {
+        const pct = Math.min(100, Math.round((done/total)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Kopiere: ' + pct + ' %';
+      } else {
+        transferProgress.removeAttribute('value');
+        transferPercent.textContent = 'Berechne Größe ...';
+      }
+
+      if(state === 'done'){
+        transferProgress.value = 100;
+        transferPercent.textContent = 'Fertig';
+        if(j && j.message) toast(j.message, 'ok', 2200);
+        break;
+      } else if(state === 'error' || state === 'canceled'){
+        if(j && j.message) toast(j.message, 'error');
+        else toast(state === 'error' ? 'Fehler' : 'Abgebrochen', 'error');
+        break;
+      }
+    }
+  }
+
+  async function pollDelete(taskId){
+    transferProgress.max = 100;
+    transferProgress.value = 0;
+    transferPercent.textContent = 'Lösche...';
+
+    while(true){
+      await new Promise(r => setTimeout(r, 250));
+      const r = await fetch('/deletecontents_status?task=' + encodeURIComponent(taskId));
+      if(!r.ok){
+        transferPercent.textContent = 'Fehler beim Status';
+        break;
+      }
+      const j = await r.json().catch(()=>({}));
+      const bt = j.bytes_total || 0;
+      const bd = j.bytes_done || 0;
+      const total = j.total || 0;
+      const done = j.done || 0;
+      const state = j.state || 'unknown';
+
+      if(bt > 0){
+        const pct = Math.min(100, Math.round((bd/bt)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Löschen: ' + humanSize(bd) + ' / ' + humanSize(bt) + ' (' + pct + ' %)';
+      } else if (total > 0) {
+        const pct = Math.min(100, Math.round((done/total)*100));
+        transferProgress.value = pct;
+        transferPercent.textContent = 'Löschen: ' + pct + ' %';
+      } else {
+        transferProgress.removeAttribute('value');
+        transferPercent.textContent = 'Berechne Größe ...';
+      }
+
+      if(state === 'done'){
+        transferProgress.value = 100;
+        transferPercent.textContent = 'Löschen fertig';
+        if(j && j.message) toast(j.message, 'ok', 2200);
+        break;
+      } else if(state === 'error' || state === 'canceled'){
+        if(j && j.message) toast(j.message, 'error');
+        else toast(state === 'error' ? 'Fehler' : 'Abgebrochen', 'error');
+        break;
+      }
+    }
+  }
+
+  cancelBtn.onclick = async () => {
+    if(!currentTask) return;
+    try{
+      if(currentTask.type === 'copy'){
+        await fetch('/copy_cancel?task=' + encodeURIComponent(currentTask.id));
+      } else if(currentTask.type === 'unzip'){
+        await fetch('/unzip_cancel?task=' + encodeURIComponent(currentTask.id));
+      } else if(currentTask.type === 'zip'){
+        await fetch('/zip_cancel?task=' + encodeURIComponent(currentTask.id));
+      } else if(currentTask.type === 'delete'){
+        await fetch('/deletecontents_cancel?task=' + encodeURIComponent(currentTask.id));
+      }
+      toast('Abbruch angefordert', 'ok', 1500);
+    }catch(e){
+      console.error('cancel failed', e);
+    }
+  };
+
+  // Event-Handler
+  uploadBtn.onclick = () => {
+    if(activeTransfer){ toast('Transfer aktiv', 'err', 1800); return; }
+    const inp = document.createElement('input');
+    inp.type = 'file';
+    inp.accept = '*/*';
+    inp.style.position = 'fixed';
+    inp.style.left = '-9999px';
+    document.body.appendChild(inp);
+    inp.onchange = () => {
+      const f = inp.files && inp.files[0];
+      if(f){
+        if(f.name.toLowerCase().endsWith('.zip')) showZipChoice(f);
+        else startUpload(f, false);
+      }
+      setTimeout(()=>inp.remove(), 0);
+    };
+    inp.click();
+  };
+
+  zipChoiceUnpack.onclick = () => {
+    if(pendingZipFile){ startUpload(pendingZipFile, true); }
+    pendingZipFile = null;
+    hideZipChoice();
+  };
+  zipChoiceOnly.onclick = () => {
+    if(pendingZipFile){ startUpload(pendingZipFile, false); }
+    pendingZipFile = null;
+    hideZipChoice();
+  };
+  zipChoiceCancel.onclick = () => {
+    pendingZipFile = null;
+    hideZipChoice();
+  };
+
+  rootAndroid.onclick = async () => { await fetch('/setroot?root=Android'); await loadInfo(); await loadClip(); loadPath(''); };
+  rootKodi.onclick = async () => { await fetch('/setroot?root=Kodi'); await loadInfo(); await loadClip(); loadPath(''); };
+
+  quitBtn.onclick = async () => {
+    try{
+      const r = await fetch('/quit');
+      if(r.ok) toast('Kodi wird beendet...', 'ok', 2500);
+      else toast('Quit fehlgeschlagen', 'error');
+    }catch(e){
+      toast('Fehler bei Quit', 'error');
+      console.error(e);
+    }
+  };
+
+  appinfoBtn.onclick = async () => {
+    try{
+      const r = await fetch('/appinfo');
+      if(r.ok){
+        const j = await r.json().catch(()=>({}));
+        toast((j && j.message) ? j.message : 'App-Info geöffnet', 'ok', 2200);
+      } else {
+        const t = await r.text().catch(()=> '');
+        toast('App-Info öffnen fehlgeschlagen' + (t ? (': ' + t) : ''), 'error');
+      }
+    }catch(e){
+      toast('Fehler beim Öffnen der App-Info', 'error');
+      console.error(e);
+    }
+  };
+
+  closeServerBtn.onclick = async () => {
+    if(activeTransfer) return toast('Transfer aktiv', 'err', 1800);
+    try{
+      const resp = await fetch('/shutdown');
+      if(resp.ok){
+        toast('Server wird beendet...', 'ok', 2500);
+        document.querySelectorAll('.btn').forEach(b => { b.disabled = true; });
+      } else {
+        toast('Server konnte nicht beendet werden', 'error');
+      }
+    }catch(e){
+      toast('Fehler beim Beenden des Servers', 'error');
+      console.error(e);
+    }
+  };
+
+  pasteBtn.onclick = async () => {
+    if(pasteBtn.disabled) return;
+    try{
+      setBusy(true, 'Füge ein...');
+      const start = await fetch('/paste_start?path=' + encodeURIComponent(currentPath || ''));
+      if(!start.ok){
+        const r = await fetch('/paste?path=' + encodeURIComponent(currentPath || ''));
+        const ok = r.ok;
+        const j = await r.json().catch(async () => ({message: await r.text()}));
+        toast((j && j.message) ? j.message : (ok ? 'Fertig' : 'Einfügen fehlgeschlagen'), ok ? 'ok' : 'error');
+        await loadPath(currentPath);
+        await loadClip();
+        setBusy(false);
+        return;
+      }
+      const j = await start.json().catch(()=> ({}));
+      if(!j || !j.task_id){
+        toast('Konnte Einfügen nicht starten.', 'error');
+        setBusy(false);
+        return;
+      }
+      currentTask = {type:'copy', id:j.task_id};
+      await pollCopy(j.task_id);
+      await loadPath(currentPath);
+      await loadClip();
+    }catch(e){
+      toast('Fehler beim Einfügen', 'error');
+      console.error(e);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  zipNoRootBtn.onclick = () => {
+    if(activeTransfer) return toast('Transfer aktiv', 'err', 1800);
+    if(!confirm('Dieses Verzeichnis als ZIP (ohne Hauptordner) herunterladen?\n' + (currentPath || '/'))) return;
+    startZipAndDownload(currentPath || '', false);
+  };
+
+  clearDirBtn.onclick = async () => {
+    if(activeTransfer) return toast('Transfer aktiv', 'err', 1800);
+    const label = (currentRootName === 'Kodi' ? 'Kodi Root' : 'Android Root') + ': ' + (currentPath || '/');
+    if(!confirm('Wirklich den gesamten Inhalt von "' + label + '" löschen?\nDer Ordner selbst bleibt erhalten.')) return;
+    setBusy(true, 'Berechne Größe ...');
+    try{
+      const start = await fetch('/deletecontents_start?path=' + encodeURIComponent(currentPath || ''));
+      if(start.ok){
+        const j = await start.json().catch(()=>({}));
+        if(j && j.task_id){
+          currentTask = {type:'delete', id:j.task_id};
+          await pollDelete(j.task_id);
+          await loadPath(currentPath);
+          setBusy(false);
+          return;
+        }
+      }
+      const resp = await fetch('/deletecontents?path=' + encodeURIComponent(currentPath || ''));
+      const j = await resp.json().catch(()=>({}));
+      if(resp.ok){
+        toast(j && j.message ? j.message : 'Inhalt gelöscht', 'ok', 2500);
+        await loadPath(currentPath);
+      } else {
+        toast(j && j.message ? j.message : 'Löschen fehlgeschlagen', 'error');
+      }
+    }catch(e){
+      toast('Fehler beim Löschen', 'error');
+      console.error(e);
+    }finally{
+      setBusy(false);
+    }
+  };
+
+  // Initialisierung
+  await loadInfo();
+  await loadClip();
+  await loadPath('');
+})();
+</script>
+</body>
+</html>

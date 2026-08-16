@@ -1,0 +1,298 @@
+# Addon Name: sKullsfusionIPTV
+# Addon id: plugin.video.svod
+# Addon Provider: xS-Team
+
+msgid ""
+msgstr ""
+
+msgctxt "#32002"
+msgid "Server Addresse (ex. http://xyz:888/c/ or http://xyz:888/stalker_portal/c/)"
+msgstr "Server Address (ex. http://xyz:888/c/ or http://xyz:888/stalker_portal/c/)"
+
+msgctxt "#32003"
+msgid "Server"
+msgstr "Server"
+
+msgctxt "#32004"
+msgid "Server Standard path /server/load.php"
+msgstr "Server Standard Pfad /server/load.php"
+
+msgctxt "#32005"
+msgid "Use /portal.php as path"
+msgstr "Benutze /portal.php als Pfad"
+
+msgctxt "#32006"
+msgid "Client"
+msgstr "Client"
+
+msgctxt "#32007"
+msgid "MAC Address"
+msgstr "MAC Addresse"
+
+msgctxt "#32008"
+msgid "Advanced"
+msgstr "Fortgeschritten"
+
+msgctxt "#32009"
+msgid "Serial Number"
+msgstr "Serial Number"
+
+msgctxt "#32010"
+msgid "Device ID"
+msgstr "Device ID"
+
+msgctxt "#32011"
+msgid "Device ID 2"
+msgstr "Device ID 2"
+
+msgctxt "#32012"
+msgid "Signature"
+msgstr "Signature"
+
+msgctxt "#32013"
+msgid "Portal Name"
+msgstr "Portal Name"
+
+msgctxt "#32101"
+msgid "Portal 1"
+msgstr "Portal 1"
+
+msgctxt "#32102"
+msgid "Portal 2"
+msgstr "Portal 2"
+
+msgctxt "#32103"
+msgid "Portal 3"
+msgstr "Portal 3"
+
+msgctxt "#32104"
+msgid "Portal 4"
+msgstr "Portal 4"
+
+msgctxt "#32105"
+msgid "Portal 5"
+msgstr "Portal 5"
+
+msgctxt "#32106"
+msgid "Portal 6"
+msgstr "Portal 6"
+
+msgctxt "#32107"
+msgid "Portal 7"
+msgstr "Portal 7"
+
+msgctxt "#32108"
+msgid "Portal 8"
+msgstr "Portal 8"
+
+msgctxt "#32109"
+msgid "Portal 9"
+msgstr "Portal 9"
+
+msgctxt "#32110"
+msgid "Portal 10"
+msgstr "Portal 10"
+
+msgctxt "#32201"
+msgid "Add to sKullsfusionIPTV Favorites"
+msgstr "Zu sKullsfusionIPTV Favoriten hinzufügen"
+
+msgctxt "#32202"
+msgid "Remove from sKullsfusionIPTV Favorites"
+msgstr "Aus sKullsfusionIPTV Favoriten entfernen"
+
+msgctxt "#32203"
+msgid "VOD FAVORITES"
+msgstr "VOD FAVORITEN"
+
+msgctxt "#32204"
+msgid "SERIES FAVORITES"
+msgstr "SERIEN FAVORITEN"
+
+msgctxt "#32205"
+msgid "TV FAVORITES"
+msgstr "TV FAVORITEN"
+
+msgctxt "#32206"
+msgid "TV SEARCH"
+msgstr "TV SUCHE"
+
+msgctxt "#32207"
+msgid "VOD SEARCH"
+msgstr "VOD SUCHE"
+
+msgctxt "#32208"
+msgid "SERIES SEARCH"
+msgstr "SERIES SUCHE"
+
+msgctxt "#32209"
+msgid "Addon Settings"
+msgstr "Addon Einstellungen"
+
+msgctxt "#32301"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "#32302"
+msgid "Category Filter (e.g. DE)"
+msgstr "Kategorien Filter (z.B. DE)"
+
+msgctxt "#32303"
+msgid "Load EPG in the Background"
+msgstr "EPG im Hintergrund laden"
+
+msgctxt "#32304"
+msgid "Deactivated"
+msgstr "Deaktiviert"
+
+msgctxt "#32305"
+msgid "Only Favorites"
+msgstr "Nur Favoriten"
+
+msgctxt "#32306"
+msgid "All Channels (Slow!)"
+msgstr "Alle Sender (Langsam!)"
+
+msgctxt "#32307"
+msgid "Enable/Disable EPG"
+msgstr "Aktiviere/Deaktiviere EPG"
+
+msgctxt "#32308"
+msgid "Group global favorites by portal"
+msgstr "Globale Favoriten nach Portal gruppieren"
+
+msgctxt "#32309"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "#32310"
+msgid "EPG Thread-Pool size"
+msgstr "EPG Thread-Pool Größe"
+
+msgctxt "#32311"
+msgid "Parallel workers to fetch EPG"
+msgstr "Parallele Jobs um das EPG zu holen"
+
+msgctxt "#32401"
+msgid "Backup Settings"
+msgstr "Einstellungen sichern (Backup)"
+
+msgctxt "#32600"
+msgid "Use custom categories"
+msgstr "Eigene Kategorien verwenden"
+
+msgctxt "#32601"
+msgid "Rename category"
+msgstr "Kategorie umbenennen"
+
+msgctxt "#32602"
+msgid "Delete category"
+msgstr "Kategorie löschen"
+
+msgctxt "#32603"
+msgid "Add to category"
+msgstr "Zu Kategorie hinzufügen"
+
+msgctxt "#32604"
+msgid "Create new category"
+msgstr "Neue Kategorie erstellen"
+
+msgctxt "#32605"
+msgid "Remove from category"
+msgstr "Aus Kategorie entfernen"
+
+msgctxt "#32606"
+msgid "Enter category name"
+msgstr "Kategoriename eingeben"
+
+msgctxt "#32607"
+msgid "Enter new category name"
+msgstr "Neuen Kategorienamen eingeben"
+
+msgctxt "#32608"
+msgid "Delete category?"
+msgstr "Kategorie löschen?"
+
+msgctxt "#32609"
+msgid "Do you really want to delete the category '{}'?"
+msgstr "Möchten Sie die Kategorie '{}' wirklich löschen?"
+
+msgctxt "#32610"
+msgid "No categories"
+msgstr "Keine Kategorien"
+
+msgctxt "#32611"
+msgid "Please create a category first."
+msgstr "Bitte erstellen Sie zuerst eine Kategorie."
+
+msgctxt "#32612"
+msgid "Select category"
+msgstr "Kategorie auswählen"
+
+msgctxt "#32620"
+msgid "Move Up"
+msgstr "Nach oben"
+
+msgctxt "#32621"
+msgid "Move Down"
+msgstr "Nach unten"
+
+msgctxt "#32622"
+msgid "Set Position"
+msgstr "Position festlegen"
+
+msgctxt "#32623"
+msgid "Enter position (1-%d)"
+msgstr "Position eingeben (1-%d)"
+
+msgctxt "#32402"
+msgid "Restore Settings"
+msgstr "Einstellungen wiederherstellen (Restore)"
+
+msgctxt "#32403"
+msgid "Select Backup Zip"
+msgstr "Backup ZIP auswählen"
+
+msgctxt "#32413"
+msgid "Last Page"
+msgstr "Letzte Seite"
+
+msgctxt "#32414"
+msgid "Previous Page"
+msgstr "Vorherige Seite"
+
+msgctxt "#32415"
+msgid "First Page"
+msgstr "Erste Seite"
+
+msgctxt "#32416"
+msgid "Next Page"
+msgstr "Nächste Seite"
+
+msgctxt "#32417"
+msgid "Select VOD Category"
+msgstr "VOD Kategorie wählen"
+
+msgctxt "#32418"
+msgid "Select Series Category"
+msgstr "VOD Kategorie wählen"
+
+msgctxt "#32419"
+msgid "Select TV Genre"
+msgstr "TV Genre wählen"
+
+msgctxt "#32312"
+msgid "Portal List URL"
+msgstr "Portal-Liste URL"
+
+msgctxt "#32313"
+msgid "URL to JSON file with portal configurations"
+msgstr "URL zur JSON-Datei mit Portal-Konfigurationen"
+
+msgctxt "#32314"
+msgid "PORTALS"
+msgstr "PORTALE"
+
+msgctxt "#32315"
+msgid "No portals configured"
+msgstr "Keine Portale konfiguriert"

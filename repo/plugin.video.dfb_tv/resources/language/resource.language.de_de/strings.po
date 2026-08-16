@@ -7,7 +7,7 @@ msgstr ""
 "Project-Id-Version: KODI-Addons\n"
 "Report-Msgid-Bugs-To: alanwww1@kodi.org\n"
 "POT-Creation-Date: 2021-01-10 17:00+0000\n"
-"PO-Revision-Date: 2025-10-12 21:00+0000\n"
+"PO-Revision-Date: 2026-06-01 18:00+0000\n"
 "Last-Translator: realvito\n"
 "Language-Team: GERMAN\n"
 "MIME-Version: 1.0\n"
@@ -109,18 +109,26 @@ msgid "[B][COLOR chartreuse]■  ■  ■ LIVESTREAM ONLINE ■  ■  ■[/COLOR
 msgstr "[B][COLOR chartreuse]■  ■  ■ LIVESTREAM ONLINE ■  ■  ■[/COLOR][/B][CR][CR]"
 
 msgctxt "#30626"
-msgid "Tba. Start: [B][COLOR chartreuse]{}[/COLOR][/B][CR][CR]"
-msgstr "Vrstl. Start: [B][COLOR chartreuse]{}[/COLOR][/B][CR][CR]"
+msgid "Announced: [B][COLOR chartreuse]{}[/COLOR][/B][CR]Visitors: [B][COLOR FFFFA500]{}[/COLOR][/B][CR][CR]"
+msgstr "Angekündigt: [B][COLOR chartreuse]{}[/COLOR][/B][CR]Besucher: [B][COLOR FFFFA500]{}[/COLOR][/B][CR][CR]"
 
 msgctxt "#30627"
+msgid "Announced: [B][COLOR chartreuse]{}[/COLOR][/B][CR][CR]"
+msgstr "Angekündigt: [B][COLOR chartreuse]{}[/COLOR][/B][CR][CR]"
+
+msgctxt "#30628"
+msgid "Published: [B][COLOR yellow]{}[/COLOR][/B][CR]Appeals: [B][COLOR FFFFA500]{}[/COLOR][/B][CR][CR]"
+msgstr "Veröffentlicht: [B][COLOR yellow]{}[/COLOR][/B][CR]Aufrufe: [B][COLOR FFFFA500]{}[/COLOR][/B][CR][CR]"
+
+msgctxt "#30629"
 msgid "Published: [B][COLOR yellow]{}[/COLOR][/B][CR][CR]"
 msgstr "Veröffentlicht: [B][COLOR yellow]{}[/COLOR][/B][CR][CR]"
 
-msgctxt "#30628"
+msgctxt "#30630"
 msgid "[B][COLOR chartreuse]≡ ≡ ≡ UP-LIVE ≡ ≡ ≡[/COLOR][/B] [I]{}[/I]"
 msgstr "[B][COLOR chartreuse]≡ ≡ ≡ UP-LIVE ≡ ≡ ≡[/COLOR][/B] [I]{}[/I]"
 
-# empty strings from id 30629 to 32100
+# empty strings from id 30631 to 32100
 # Convert full Date with short Weekdays for Languages
 
 msgctxt "#32101"

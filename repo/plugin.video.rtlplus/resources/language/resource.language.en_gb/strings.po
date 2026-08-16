@@ -1,0 +1,166 @@
+# Kodi Media Center language file
+# Addon Name: RTL+
+# Addon id: plugin.video.rtlplus
+# Addon Provider: bedrock-rebuild
+msgid ""
+msgstr ""
+"Project-Id-Version: RTL+\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-09\n"
+"PO-Revision-Date: 2026-05-09\n"
+"Last-Translator: \n"
+"Language-Team: English\n"
+"Language: en_GB\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# ----- Category titles -----
+
+msgctxt "#32000"
+msgid "Account"
+msgstr ""
+
+msgctxt "#32100"
+msgid "Playback"
+msgstr ""
+
+msgctxt "#32200"
+msgid "Advanced"
+msgstr ""
+
+# ----- Group titles -----
+
+msgctxt "#32001"
+msgid "Credentials"
+msgstr ""
+
+msgctxt "#32002"
+msgid "Session"
+msgstr ""
+
+msgctxt "#32101"
+msgid "Stream quality"
+msgstr ""
+
+msgctxt "#32201"
+msgid "Diagnostics"
+msgstr ""
+
+# ----- Individual settings -----
+
+msgctxt "#32010"
+msgid "Email address"
+msgstr ""
+
+msgctxt "#32011"
+msgid "Password"
+msgstr ""
+
+msgctxt "#32020"
+msgid "Sign out / delete token"
+msgstr ""
+
+msgctxt "#32021"
+msgid "Reload account type"
+msgstr ""
+
+msgctxt "#32110"
+msgid "Maximum quality"
+msgstr ""
+
+msgctxt "#32114"
+msgid "Preferred audio language"
+msgstr ""
+
+msgctxt "#32115"
+msgid "Automatic (default)"
+msgstr ""
+
+msgctxt "#32116"
+msgid "German"
+msgstr ""
+
+msgctxt "#32117"
+msgid "English"
+msgstr ""
+
+msgctxt "#32111"
+msgid "1080p (Full HD)"
+msgstr ""
+
+msgctxt "#32112"
+msgid "SD (576p)"
+msgstr ""
+
+msgctxt "#32118"
+msgid "720p (HD)"
+msgstr ""
+
+msgctxt "#32119"
+msgid "360p"
+msgstr ""
+
+msgctxt "#32122"
+msgid "Preferred quality"
+msgstr ""
+
+msgctxt "#32113"
+msgid "Show active account type"
+msgstr ""
+
+msgctxt "#32210"
+msgid "Enable debug logging"
+msgstr ""
+
+msgctxt "#32211"
+msgid "Show A-Z main menu"
+msgstr ""
+
+msgctxt "#32102"
+msgid "Continue Watching"
+msgstr ""
+
+msgctxt "#32120"
+msgid "Save continue watching (last 5 videos)"
+msgstr ""
+
+msgctxt "#32215"
+msgid "M3U Export"
+msgstr ""
+
+msgctxt "#32216"
+msgid "Export path (empty = profile folder)"
+msgstr ""
+
+msgctxt "#32217"
+msgid "Create M3U now"
+msgstr ""
+
+msgctxt "#32218"
+msgid "M3U file saved to:"
+msgstr ""
+
+msgctxt "#32219"
+msgid "Include FAST channels"
+msgstr ""
+
+msgctxt "#32220"
+msgid "Include radio channels"
+msgstr ""
+
+msgctxt "#32221"
+msgid "Include movies"
+msgstr ""
+
+msgctxt "#32222"
+msgid "Include series"
+msgstr ""
+
+msgctxt "#32223"
+msgid "Include Live-TV channels"
+msgstr ""
+
+msgctxt "#32218"
+msgid "Browse for export folder"
+msgstr ""

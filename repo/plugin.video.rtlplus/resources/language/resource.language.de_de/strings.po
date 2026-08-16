@@ -1,0 +1,178 @@
+# Kodi Media Center language file
+# Addon Name: RTL+
+# Addon id: plugin.video.rtlplus
+# Addon Provider: bedrock-rebuild
+msgid ""
+msgstr ""
+"Project-Id-Version: RTL+\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-09\n"
+"PO-Revision-Date: 2026-05-09\n"
+"Last-Translator: \n"
+"Language-Team: German\n"
+"Language: de_de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# ----- Category titles -----
+
+msgctxt "#32000"
+msgid "Account"
+msgstr "Konto"
+
+msgctxt "#32100"
+msgid "Playback"
+msgstr "Wiedergabe"
+
+msgctxt "#32200"
+msgid "Advanced"
+msgstr "Erweitert"
+
+# ----- Group titles -----
+
+msgctxt "#32001"
+msgid "Credentials"
+msgstr "Anmeldedaten"
+
+msgctxt "#32002"
+msgid "Session"
+msgstr "Sitzung"
+
+msgctxt "#32101"
+msgid "Stream quality"
+msgstr "Stream-Qualität"
+
+msgctxt "#32201"
+msgid "Diagnostics"
+msgstr "Diagnose"
+
+# ----- Individual settings -----
+
+msgctxt "#32010"
+msgid "Email address"
+msgstr "E-Mail-Adresse"
+
+msgctxt "#32011"
+msgid "Password"
+msgstr "Passwort"
+
+msgctxt "#32020"
+msgid "Sign out / delete token"
+msgstr "Abmelden / Token löschen"
+
+msgctxt "#32021"
+msgid "Reload account type"
+msgstr "Account-Typ neu laden"
+
+msgctxt "#32110"
+msgid "Maximum quality"
+msgstr "Maximale Qualität"
+
+msgctxt "#32114"
+msgid "Preferred audio language"
+msgstr "Bevorzugte Audiosprache"
+
+msgctxt "#32115"
+msgid "Automatic (default)"
+msgstr "Automatisch (Standard)"
+
+msgctxt "#32116"
+msgid "German"
+msgstr "Deutsch"
+
+msgctxt "#32117"
+msgid "English"
+msgstr "Englisch"
+
+msgctxt "#32111"
+msgid "1080p (Full HD)"
+msgstr "1080p (Full HD)"
+
+msgctxt "#32112"
+msgid "SD (576p)"
+msgstr "SD (576p)"
+
+msgctxt "#32118"
+msgid "720p (HD)"
+msgstr "720p (HD)"
+
+msgctxt "#32119"
+msgid "360p"
+msgstr "360p"
+
+msgctxt "#32122"
+msgid "Preferred quality"
+msgstr "Bevorzugte Qualität"
+
+msgctxt "#32113"
+msgid "Show active account type"
+msgstr "Aktiver Account-Typ anzeigen"
+
+msgctxt "#32210"
+msgid "Enable debug logging"
+msgstr "Debug-Protokollierung aktivieren"
+
+msgctxt "#32211"
+msgid "Show A-Z main menu"
+msgstr "A-Z Hauptmenü anzeigen"
+
+msgctxt "#32212"
+msgid "Widevine DRM"
+msgstr "Widevine DRM"
+
+msgctxt "#32213"
+msgid "Update Widevine CDM"
+msgstr "Widevine CDM aktualisieren"
+
+msgctxt "#32214"
+msgid "Install InputStream Adaptive"
+msgstr "InputStream Adaptive installieren"
+
+msgctxt "#32102"
+msgid "Continue Watching"
+msgstr "Weiterschauen"
+
+msgctxt "#32120"
+msgid "Save continue watching (last 5 videos)"
+msgstr "Angefangene Filme speichern (letzte 5 Videos)"
+
+msgctxt "#32215"
+msgid "M3U Export"
+msgstr "M3U-Export"
+
+msgctxt "#32216"
+msgid "Export path (empty = profile folder)"
+msgstr "Exportpfad (leer = Profilordner)"
+
+msgctxt "#32217"
+msgid "Create M3U now"
+msgstr "M3U jetzt erstellen"
+
+msgctxt "#32218"
+msgid "M3U file saved to:"
+msgstr "M3U-Datei gespeichert unter:"
+
+msgctxt "#32219"
+msgid "Include FAST channels"
+msgstr "FAST-Kanäle einschließen"
+
+msgctxt "#32220"
+msgid "Include radio channels"
+msgstr "Radio-Kanäle einschließen"
+
+msgctxt "#32221"
+msgid "Include movies"
+msgstr "Filme einschließen"
+
+msgctxt "#32222"
+msgid "Include series"
+msgstr "Serien einschließen"
+
+msgctxt "#32223"
+msgid "Include Live-TV channels"
+msgstr "Live-TV-Kanäle einschließen"
+
+msgctxt "#32218"
+msgid "Browse for export folder"
+msgstr "Exportordner auswählen"

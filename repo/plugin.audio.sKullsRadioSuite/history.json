@@ -22,5 +22,11 @@
     "name": "I LOVE MASHUP",
     "url": "https://streams.ilovemusic.de/iloveradio5.mp3",
     "played": "2026-05-17T15:33:25.158333"
+  },
+  {
+    "domain": "M1.FM",
+    "name": "TOP OF THE CHARTS",
+    "url": "https://tuner.m1.fm/charts.mp3",
+    "played": "2026-06-28T20:56:02.512572"
   }
 ]

@@ -1,6 +1,6 @@
 # sKulls Fusion Wallpapers
 
-**Version:** 1.2.3
+**Version:** 1.3.1
 **Kodi Version:** 21.3+ (Omega)
 **Python:** 3.0.1
 
@@ -17,6 +17,15 @@ Ein hochwertiges Wallpaper-Add-on für Kodi mit Unterstützung für WallpapersCr
 - **Favoriten** - Speichere deine Lieblings-Wallpapers
 - **Wallpaper-Set** - Erstelle eigene Kollektionen
 - **Diashow-Modus** - Slideshow aus Favoriten oder Set
+
+### Genre-Verwaltung (NEU)
+- **Downloads nach Genres organisieren** - Erstelle eigene Genre-Ordner
+- **Genre erstellen** - Neue Kategorien für deine Wallpapers anlegen
+- **Genre umbenennen** - Bestehende Genres ändern
+- **Genre löschen** - Genres entfernen (Dateien bleiben erhalten)
+- **Download mit Genre-Auswahl** - Beim Download direkt das Genre wählen
+- **Verschieben** - Wallpapers per Context-Menu in ein Genre verschieben
+- **Import mit Genre** - Bilder direkt beim Import einem Genre zuordnen
 
 ### Filter & Einstellungen
 - **18+ Filter** - Filterung von adult content (einstellbar)
@@ -57,23 +66,43 @@ Ein hochwertiges Wallpaper-Add-on für Kodi mit Unterstützung für WallpapersCr
 ### Hauptmenü
 
 ```
-====================
+========================
 sKulls Fusion Wallpapers
-====================
+========================
 
-🔍 Search Wallpapers
-📜 Search History (wenn vorhanden)
-🎲 Random Wallpaper
-★ My Favorites (Anzahl)
-📁 Wallpaper Set (Anzahl)
+Search Wallpapers
+Search History (wenn vorhanden)
+Random Wallpaper
+My Favorites (Anzahl)
+Wallpaper Set (Anzahl)
 -------------------
-📂 My Wallpapers
-💀 sKulls Archive
+My Wallpapers
+Genre Manager
+sKulls Archive
 [Custom Sources]
 [Manage Custom Sources]
 -------------------
-📋 Categories
+Categories
 ```
+
+### Genre Manager
+1. Klicke auf "Genre Manager" im Hauptmenü
+2. Erstelle neue Genres mit "+ Create New Genre"
+3. Browsen: Klicke auf ein Genre um dessen Inhalte zu sehen
+4. Umbenennen: Rechtsklick → Rename
+5. Löschen: Rechtsklick → Delete
+
+### Download mit Genre
+Beim Download eines Wallpapers:
+1. Erscheint eine Auswahlliste der verfügbaren Genres
+2. Wähle ein Genre oder "Default folder" für den Hauptordner
+3. Neue Genres können direkt erstellt werden
+
+### Wallpaper verschieben
+In "My Wallpapers":
+1. Rechtsklick auf ein Wallpaper
+2. Wähle "Move to Genre..."
+3. Ziel-Genre auswählen
 
 ### Suchfunktion
 1. Klicke auf "Search Wallpapers"
@@ -121,6 +150,10 @@ URL: `https://ia601602.us.archive.org/6/items/tr049_20230511/WALLPAPERS/`
   - FullHD (1920x)
   - HD (1280x)
 
+### Genres (NEU)
+- **Open Genre Manager** - Genre-Verwaltung öffnen
+- **Ask genre when downloading** - Bei Download nach Genre fragen
+
 ### Custom Sources
 - **Add New Source** - Neue Quelle hinzufügen
 
@@ -131,32 +164,30 @@ URL: `https://ia601602.us.archive.org/6/items/tr049_20230511/WALLPAPERS/`
 
 ---
 
-## Tastenkombinationen
-
-| Aktion | Beschreibung |
-|--------|--------------|
-| Rechtsklick | Kontextmenü |
-| Info-Taste | Wallpaper-Details |
-| Play-Taste | Download starten |
-
----
-
 ## Ordnerstruktur
 
 ```
 plugin.program.sKullsWallpapers/
-├── default.py              # Haupt-Add-on
+├── default.py              # Router Entry Point
 ├── addon.xml              # Add-on Manifest
 ├── README.md              # Diese Datei
 ├── icon.png               # Add-on Icon
 ├── fanart.jpg             # Hintergrundbild
-├── changelog.txt          # Änderungen
 └── resources/
     ├── settings.xml       # Einstellungen
     ├── media/             # Icons
     └── lib/
-        ├── skulls_source.py    # Internet Archive
-        └── wc_scraper.py       # WallpapersCraft
+        ├── common.py          # Shared constants & helpers
+        ├── cache.py           # Offline-Cache
+        ├── favorites.py       # Favoriten
+        ├── wallpaper_set.py   # Wallpaper-Set
+        ├── history.py         # Suchverlauf
+        ├── genres.py          # Genre-Verwaltung
+        ├── my_wallpapers.py   # Lokale Wallpaper
+        ├── sources.py         # Custom Sources
+        ├── ui.py              # UI-Funktionen
+        ├── skulls_source.py   # Internet Archive
+        └── wc_scraper.py      # WallpapersCraft
 ```
 
 ---
@@ -179,6 +210,10 @@ plugin.program.sKullsWallpapers/
 - Prüfe den Download-Ordner in den Einstellungen
 - Genug Speicherplatz vorhanden?
 
+### Problem: Genre-Ordner nicht sichtbar
+- Prüfe den Download-Ordner in den Einstellungen
+- Erstelle ein neues Genre im Genre Manager
+
 ---
 
 ## Quellen
@@ -195,15 +230,21 @@ plugin.program.sKullsWallpapers/
 
 ---
 
-## Kontakt & Support
-
-- Website: [wird noch hinzugefügt]
-- Forum: [wird noch hinzugefügt]
-- Email: [wird noch hinzugefügt]
-
----
-
 ## Version History
+
+### v1.3.1
+- Download-Pfad wahlbar per Explorer oder manuelle Eingabe
+- Genre Manager Buttons in Settings gefixt
+- Default Download-Pfad auf special://profile/Wallpaper geaendert
+
+### v1.3.0
+- Genre-Verwaltung für Downloads
+- Download mit Genre-Auswahl
+- Wallpaper per Context-Menu in Genre verschieben
+- Import mit Genre-Zuordnung
+- Set-Download mit Genre-Unterstützung
+- Modulare Code-Struktur (Refactoring)
+- Bugfixes
 
 ### v1.2.3
 - Custom Sources (eigene Quellen)

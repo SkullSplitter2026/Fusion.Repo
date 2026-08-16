@@ -161,13 +161,13 @@ class SessionAdapter(requests.adapters.HTTPAdapter):
         #######################
         super(SessionAdapter, self).init_poolmanager(*args, **kwargs)
         func = self.poolmanager.connection_from_pool_key
-        if not (isinstance(func, functools.partial) and func.func is self.connection_from_pool_key):
+        if not (isinstance(func, functools.partial) and getattr(func.func, '__func__', None) is self.connection_from_pool_key.__func__):
             self.poolmanager.connection_from_pool_key = functools.partial(self.connection_from_pool_key, func)
 
     def proxy_manager_for(self, *args, **kwargs):
         manager = super(SessionAdapter, self).proxy_manager_for(*args, **kwargs)
         func = manager.connection_from_pool_key
-        if not (isinstance(func, functools.partial) and func.func is self.connection_from_pool_key):
+        if not (isinstance(func, functools.partial) and getattr(func.func, '__func__', None) is self.connection_from_pool_key.__func__):
             manager.connection_from_pool_key = functools.partial(self.connection_from_pool_key, func)
         return manager
 
@@ -199,7 +199,7 @@ class SessionAdapter(requests.adapters.HTTPAdapter):
         pool = func(pool_key, request_context)
         # Guard against re-wrapping a cached pool - would otherwise accumulate partials
         # and recurse without bound on _new_conn().
-        if not (isinstance(pool._new_conn, functools.partial) and pool._new_conn.func is self._new_pool_conn):
+        if not (isinstance(pool._new_conn, functools.partial) and getattr(pool._new_conn.func, '__func__', None) is self._new_pool_conn.__func__):
             pool._new_conn = functools.partial(self._new_pool_conn, pool._new_conn)
         return pool
 

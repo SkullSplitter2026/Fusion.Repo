@@ -138,3 +138,47 @@ def set_kodi_proxy(ip, port, proxy_type=0, username=None, password=None):
         xbmcgui.Dialog().ok("CLOUDFLARE DNS", f"Proxy dns configurado para {ip}:{port}.\nReinicie o Kodi para aplicar as alterações.")
     
     return True
+
+
+def _same_proxy_value(value, expected):
+    try:
+        return str(value).strip() == str(expected).strip()
+    except Exception:
+        return False
+
+def disable_addon_proxy_if_active(ip, port):
+    """
+    Desativa o proxy do Kodi somente se ele ainda estiver apontado para o
+    proxy local deste addon.
+
+    Uso: desativação/desinstalação do addon.
+    Não deve ser chamado no fechamento/reinício normal do Kodi, para preservar
+    o comportamento estável da versão 1.0.0.
+    """
+    try:
+        enabled = get_setting("network.usehttpproxy")
+        server = get_setting("network.httpproxyserver")
+        current_port = get_setting("network.httpproxyport")
+
+        if enabled and _same_proxy_value(server, ip) and _same_proxy_value(current_port, int(port)):
+            xbmc.log("[CLOUDFLARE DNS] Desativando proxy do addon no Kodi.", xbmc.LOGINFO)
+            ok = set_setting("network.usehttpproxy", False)
+
+            # Limpeza leve: deixa claro que o proxy deste addon não ficou preso.
+            # Se algum Kodi rejeitar string vazia/porta 0, o principal já foi feito: usehttpproxy=False.
+            try:
+                set_setting("network.httpproxyserver", "")
+            except Exception:
+                pass
+            try:
+                set_setting("network.httpproxyport", 0)
+            except Exception:
+                pass
+
+            return bool(ok)
+
+        xbmc.log("[CLOUDFLARE DNS] Proxy atual não pertence ao addon; nada a restaurar.", xbmc.LOGINFO)
+        return True
+    except Exception as e:
+        xbmc.log(f"[CLOUDFLARE DNS] Erro ao desativar proxy do addon: {e}", xbmc.LOGERROR)
+        return False

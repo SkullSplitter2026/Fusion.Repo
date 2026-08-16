@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="2">
+
+
+    <section id="account">
+        
+
+        <category id="account" label="32000">
+            <group id="1" label="32001">
+                <setting id="username" type="string" label="32010">
+                    <default></default>
+                    <constraints><allowempty>true</allowempty></constraints>
+                    <control type="edit" format="string"><heading>32010</heading></control>
+                </setting>
+                <setting id="password" type="string" label="32011">
+                    <default></default>
+                    <constraints><allowempty>true</allowempty></constraints>
+                    <control type="edit" format="string">
+                        <heading>32011</heading>
+                        <hidden>true</hidden>
+                    </control>
+                </setting>
+            </group>
+            <group id="2" label="32002">
+                <setting id="logout" type="action" label="32020">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=logout)</data>
+                    <control type="button" format="action"/>
+                </setting>
+                <setting id="refresh_account_type" type="action" label="32021">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=refresh_account_type)</data>
+                    <control type="button" format="action"/>
+                </setting>
+                <setting id="account_type_info" type="action" label="32113">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=show_account_type)</data>
+                    <control type="button" format="action"/>
+                </setting>
+            </group>
+        </category>
+
+
+        <category id="playback" label="32100">
+            <group id="1" label="32101">
+                <setting id="audio_language" type="integer" label="32114">
+                    <default>0</default>
+                    <constraints>
+                        <options>
+                            <option label="32115">0</option>
+                            <option label="32116">1</option>
+                            <option label="32117">2</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                </setting>
+                <setting id="quality_max" type="integer" label="32110">
+                    <default>0</default>
+                    <constraints>
+                        <options>
+                            <option label="32111">0</option>
+                            <option label="32118">1</option>
+                            <option label="32112">2</option>
+                            <option label="32119">3</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                </setting>
+                <setting id="quality_preferred" type="integer" label="32122">
+                    <default>0</default>
+                    <constraints>
+                        <options>
+                            <option label="32115">0</option>
+                            <option label="32111">1</option>
+                            <option label="32118">2</option>
+                            <option label="32112">3</option>
+                            <option label="32119">4</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                </setting>
+            </group>
+            <group id="2" label="32102">
+                <setting id="weiterschauen_enabled" type="boolean" label="32120">
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+            </group>
+        </category>
+        <category id="advanced" label="32200">
+            <group id="1" label="32201">
+                <setting id="enableDebug" type="boolean" label="32210">
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting id="show_az_menu" type="boolean" label="32211">
+                    <default>false</default>
+                    <control type="toggle"/>
+                </setting>
+                <setting id="quality" type="integer" label="32110">
+                    <default>0</default>
+                    <constraints>
+                        <options>
+                            <option label="32111">0</option>
+                            <option label="32112">1</option>
+                        </options>
+                    </constraints>
+                    <control type="spinner" format="string"/>
+                    <dependencies>
+                        <dependency type="visible">false</dependency>
+                    </dependencies>
+                </setting>
+            </group>
+            
+            <group id="2" label="32212">
+                <setting id="widevine_update" type="action" label="32213">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=widevine_update)</data>
+                    <control type="button" format="action"/>
+                </setting>
+                <setting id="inputstream_install" type="action" label="32214">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=inputstream_install)</data>
+                    <control type="button" format="action"/>
+                </setting>
+            </group>
+            
+            <group id="3" label="32215">
+                <setting id="m3u_export_path" type="string" label="32216">
+                    <default></default>
+                    <constraints><allowempty>true</allowempty></constraints>
+                    <control type="edit" format="string">
+                        <heading>32216</heading>
+                    </control>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_browse_path" type="action" label="32218">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=browse_export_path)</data>
+                    <control type="button" format="action"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_include_livetv" type="boolean" label="32223">
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_include_fast" type="boolean" label="32219">
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_include_radio" type="boolean" label="32220">
+                    <default>true</default>
+                    <control type="toggle"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_include_movies" type="boolean" label="32221">
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="m3u_include_series" type="boolean" label="32222">
+                    <default>false</default>
+                    <control type="toggle"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+                <setting id="export_m3u" type="action" label="32217">
+                    <data>RunPlugin(plugin://plugin.video.rtlplus/?mode=export_m3u)</data>
+                    <control type="button" format="action"/>
+                    <dependencies>
+                        <dependency type="visible" setting="enableDebug">true</dependency>
+                    </dependencies>
+                </setting>
+            </group>
+        </category>
+        
+    </section>
+
+</settings>

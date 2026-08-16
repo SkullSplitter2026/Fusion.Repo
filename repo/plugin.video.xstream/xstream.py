@@ -6,15 +6,19 @@ import xbmc
 import xbmcgui
 import os
 import time
+import json
 import concurrent.futures
-from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
 from resources.lib.handler.pluginHandler import cPluginHandler
-from xbmc import LOGINFO as LOGNOTICE, LOGERROR, log
+from xbmc import executebuiltin
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.gui.gui import cGui
 from resources.lib.config import cConfig
-from resources.lib.tools import logger, cParser, cCache
+from resources.lib.logger import logger
+from resources.lib.tools import cParser, infoDialog
+from resources.lib.cache import cCache
+from xbmcvfs import translatePath
 
 try:
     import resolveurl as resolver
@@ -24,7 +28,7 @@ except ImportError:
 
 
 def viewInfo(params):
-    from resources.lib.tmdbinfo import WindowsBoxes
+    from resources.lib.tmdb.info import WindowsBoxes
     parms = ParameterHandler()
     sCleanTitle = params.getValue('searchTitle')
     sMeta = parms.getValue('sMeta')
@@ -50,27 +54,63 @@ def parseUrl():
         elif sFunction == 'viewInfo':
             viewInfo(params)
             return
+        elif sFunction == 'playTrailer':
+            from resources.lib.trailer import playTrailer
+            try:
+                # Map prefLanguage setting to language code
+                _pref = cConfig().getSetting('prefLanguage') or '0'
+                _kodi_lang = xbmc.getLanguage(xbmc.ISO_639_1) or 'de'
+                _lang_map = {'0': _kodi_lang, '1': 'de', '2': 'en', '3': 'ja'}
+                _pref_lang = _lang_map.get(_pref, _kodi_lang)
+                playTrailer(
+                    tmdb_id=params.getValue('tmdb_id') or '',
+                    mediatype=params.getValue('mediatype') or 'movie',
+                    title=params.getValue('title') or '',
+                    year=params.getValue('year') or '',
+                    poster=params.getValue('poster') or '',
+                    pref_lang=_pref_lang,
+                    season=params.getValue('season') or None,
+                )
+            except Exception:
+                import traceback
+                logger.error('Trailer error: %s' % traceback.format_exc())
+                cGui.showError('Trailer', 'Trailer-Suche fehlgeschlagen')
+            return
         elif sFunction == 'searchAlter':
             searchAlter(params)
             return
         elif sFunction == 'searchTMDB':
             searchTMDB(params)
             return
-        elif sFunction == 'devUpdates':
-            from resources.lib import updateManager
-            updateManager.devUpdates()
+        elif sFunction == 'manualResolverUpdate':
+            xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+            try:
+                from resources.lib import updateManager
+                updateManager.manualResolverUpdate()
+            finally:
+                xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
             return
         elif sFunction == 'pluginInfo':
             cPluginHandler().pluginInfo()
             return
         elif sFunction == 'changelog':
-            from resources.lib import tools
-            cConfig().setSetting('changelog_version', '')
-            tools.changelog()
+            changelog_path = os.path.join(translatePath('special://home/addons/%s/' % cConfig().getAddonInfo('id')), 'changelog.txt')
+            if not os.path.isfile(changelog_path):
+                infoDialog(cConfig().getLocalizedString(30822), icon='INFO')
+                return
+            with open(changelog_path, 'r', encoding='utf-8') as f:
+                text = f.read()
+            if not text.strip():
+                infoDialog(cConfig().getLocalizedString(30821), icon='INFO')
+            else:
+                xbmcgui.Dialog().textviewer('Changelog', text)
             return
-        elif sFunction == 'devWarning':
-            from resources.lib import tools
-            tools.devWarning()
+        elif sFunction == 'domainCheck':
+            xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+            try:
+                manualDomainCheck()
+            finally:
+                xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
             return
             
     elif params.exist('remoteplayurl'):
@@ -80,9 +120,9 @@ def parseUrl():
             if sLink:
                 xbmc.executebuiltin('PlayMedia(' + sLink + ')')
             else:
-                log(cConfig().getLocalizedString(30166) + ' -> [xstream]: Could not play remote url %s ' % sLink, LOGNOTICE)
+                logger.debug('Could not play remote url %s' % sLink)
         except resolver.resolver.ResolverError as e:
-            log(cConfig().getLocalizedString(30166) + ' -> [xstream]: ResolverError: %s' % e, LOGERROR)
+            logger.error('ResolverError: %s' % e)
         return
     else:
         sFunction = 'load'
@@ -101,13 +141,14 @@ def parseUrl():
         url = params.getValue('url')
         manual = params.exist('manual')
 
-        if cConfig().getSetting('hosterSelect') == 'Auto' and playMode != 'jd' and playMode != 'jd2' and playMode != 'pyload' and not manual:
+        hosterSelect = cConfig().getSetting('hosterSelect')
+        if hosterSelect == 'Auto' and not manual:
             cHosterGui().streamAuto(playMode, sSiteName, sFunction)
         else:
             cHosterGui().stream(playMode, sSiteName, sFunction, url)
         return
 
-    log(cConfig().getLocalizedString(30166) + " -> [xstream]: Call function '%s' from '%s'" % (sFunction, sSiteName), LOGNOTICE)
+    logger.debug("Call function '%s' from '%s'" % (sFunction, sSiteName))
     # If the hoster gui is called, run the function on it and return
     if sSiteName == 'cHosterGui':
         showHosterGui(sFunction)
@@ -116,25 +157,37 @@ def parseUrl():
         searchterm = False
         if params.exist('searchterm'):
             searchterm = params.getValue('searchterm')
+            logger.debug('found searchTermin')
         searchGlobal(searchterm)
+    # Vavoo TV (eigenstaendiger Live-TV Bereich, Logik in resources/lib/vavoo/)
+    elif sSiteName == 'vavootv':
+        from resources.lib.vavoo import vavoo as vavootv
+        vavootv.dispatch(sFunction, params)
+    # TMDB Browser (eigenstaendiger Discovery-Bereich, keine Site — Logik in resources/lib/tmdb/browser.py)
+    elif sSiteName == 'tmdb_browser':
+        from resources.lib.tmdb import browser
+        getattr(browser, sFunction)()
     elif sSiteName == 'xStream':
-        oGui = cGui()
-        oGui.openSettings()
-        # resolves strange errors in the logfile
-        #oGui.updateDirectory()
-        oGui.setEndOfDirectory()
-        xbmc.executebuiltin('Action(ParentDir)')
+        # Nur den Settings-Dialog oeffnen, KEIN endOfDirectory:
+        # Kodi bleibt dadurch in der aktuellen Liste (gleiches Muster wie
+        # domainCheck/manualResolverUpdate/pluginInfo). Das fruehere
+        # setEndOfDirectory + Action(ParentDir) erzeugte ein leeres Verzeichnis,
+        # wenn ParentDir nicht griff (z.B. Android).
+        cGui().openSettings()
     # Resolver Einstellungen im Hauptmenü
     elif sSiteName == 'resolver':
-        oGui = cGui()
         resolver.display_settings()
-        # resolves strange errors in the logfile
-        oGui.setEndOfDirectory()
-        xbmc.executebuiltin('Action(ParentDir)')
     # Manuelles Update im Hauptmenü
-    elif sSiteName == 'devUpdates':
-        from resources.lib import updateManager
-        updateManager.devUpdates()
+    # Fallback-Pfad: greift nur wenn URL ohne function= konstruiert wird (cGuiElement ohne setFunction).
+    # Aktuelle Buttons setzen beides, daher wird dieser Pfad praktisch nicht erreicht -
+    # bleibt aber als defensive Absicherung fuer die Dispatcher-Konsistenz.
+    elif sSiteName == 'manualResolverUpdate':
+        xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+        try:
+            from resources.lib import updateManager
+            updateManager.manualResolverUpdate()
+        finally:
+            xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
     # Plugin Infos    
     elif sSiteName == 'pluginInfo':
         cPluginHandler().pluginInfo()
@@ -142,10 +195,16 @@ def parseUrl():
     elif sSiteName == 'changelog':
         from resources.lib import tools
         tools.changelog()
-    # Dev Warnung anzeigen
-    elif sSiteName == 'devWarning':
-        from resources.lib import tools
-        tools.devWarning()
+    # Manueller Domain Check
+    # Fallback-Pfad: greift nur wenn URL ohne function= konstruiert wird (cGuiElement ohne setFunction).
+    # Aktuelle Buttons setzen beides, daher wird dieser Pfad praktisch nicht erreicht -
+    # bleibt aber als defensive Absicherung fuer die Dispatcher-Konsistenz.
+    elif sSiteName == 'domainCheck':
+        xbmc.executebuiltin('ActivateWindow(busydialognocancel)')
+        try:
+            manualDomainCheck()
+        finally:
+            xbmc.executebuiltin('Dialog.Close(busydialognocancel)')
     # Unterordner der Einstellungen   
     elif sSiteName == 'settings':
         oGui = cGui()
@@ -163,28 +222,39 @@ def showMainMenu(sFunction):
     ART = os.path.join(cConfig().getAddonInfo('path'), 'resources', 'art')
     addon_id = cConfig().getAddonInfo('id')
     start_time = time.time()
-    # timeout for the startup status check = 60s
-    while (startupStatus := cCache().get(addon_id + '_main', -1)) != 'finished' and time.time() - start_time <= 60:
-        time.sleep(0.5)
+    # timeout for the startup status check  to make sure all is done
+    while (startupStatus := cCache().get(addon_id + '_main', -1)) != 'finished' and time.time() - start_time <= 16:
+        time.sleep(0.2)
     
+    # Clear cached search texts so next search opens fresh keyboard
+    xbmcgui.Window(10000).clearProperty('xstream.globalSearchText')
+    xbmcgui.Window(10000).clearProperty('xstream.globalSearchResults')
+    xbmcgui.Window(10000).clearProperty('xstream.alterSearchTitle')
+    xbmcgui.Window(10000).clearProperty('xstream.alterSearchResults')
+    xbmcgui.Window(10000).clearProperty('xstream.tmdb_browser.personQuery')
+
     oGui = cGui()
 
-    # Setzte die globale Suche an erste Stelle
-    if cConfig().getSetting('GlobalSearchPosition') == 'true':
-        oGui.addFolder(globalSearchGuiElement())
+    # Vavoo TV ganz oben (ueber der globalen Suche), wenn aktiviert
+    if cConfig().getSetting('vavooTvEnabled') == 'true':
+        oGui.addFolder(vavooTvGuiElement())
+
+    # Globale Suche fest an erster Stelle (nach Vavoo, kein Toggle mehr)
+    oGui.addFolder(globalSearchGuiElement())
+
+    # TMDB Browser fest direkt darunter (kein Toggle mehr)
+    oGui.addFolder(tmdbBrowserGuiElement())
 
     oPluginHandler = cPluginHandler()
     aPlugins = oPluginHandler.getAvailablePlugins()
     if not aPlugins:
-        log(cConfig().getLocalizedString(30166) + ' -> [xstream]: No activated Plugins found', LOGNOTICE)
+        logger.debug('No activated Plugins found')
         # Open the settings dialog to choose a plugin that could be enabled
         oGui.openSettings()
         oGui.updateDirectory()
     else:
         # Create a gui element for every plugin found
         for aPlugin in sorted(aPlugins, key=lambda k: k['id']):
-            if 'vod_' in aPlugin['id']:
-                continue
             oGuiElement = cGuiElement()
             oGuiElement.setTitle(aPlugin['name'])
             oGuiElement.setSiteName(aPlugin['id'])
@@ -192,23 +262,15 @@ def showMainMenu(sFunction):
             if 'icon' in aPlugin and aPlugin['icon']:
                 oGuiElement.setThumbnail(aPlugin['icon'])
             oGui.addFolder(oGuiElement)
-        if cConfig().getSetting('GlobalSearchPosition') == 'false':
-            oGui.addFolder(globalSearchGuiElement())
 
-    if cConfig().getSetting('SettingsFolder') == 'true':
-        # Einstellung im Menü mit Untereinstellungen
-        oGuiElement = cGuiElement()
-        oGuiElement.setTitle(cConfig().getLocalizedString(30041))
-        oGuiElement.setSiteName('settings')
-        oGuiElement.setFunction('showSettingsFolder')
-        oGuiElement.setThumbnail(os.path.join(ART, 'settings.png'))
-        oGui.addFolder(oGuiElement)
-    else:
-        for folder in settingsGuiElements():
-            oGui.addFolder(folder)
-    oGui.setEndOfDirectory()
-
-
+    # Einstellungen als Ordner mit Untereinstellungen (fester Bestandteil — kein Toggle mehr)
+    oGuiElement = cGuiElement()
+    oGuiElement.setTitle(cConfig().getLocalizedString(30041))
+    oGuiElement.setSiteName('settings')
+    oGuiElement.setFunction('showSettingsFolder')
+    oGuiElement.setThumbnail(os.path.join(ART, 'settings.png'))
+    oGui.addFolder(oGuiElement)
+    oGui.setEndOfDirectory(pCacheToDisc=False) # caching will brake global search!
 def settingsGuiElements():
     ART = os.path.join(cConfig().getAddonInfo('path'), 'resources', 'art')
 
@@ -237,14 +299,29 @@ def settingsGuiElements():
     oGuiElement.setThumbnail(os.path.join(ART, 'resolveurl_settings.png'))
     resolveurlSettings = oGuiElement
     
-    # GUI Nightly Updatemanager
+    # GUI Manueller Domain Check
+    oGuiElement = cGuiElement()
+    oGuiElement.setTitle(cConfig().getLocalizedString(30818))
+    oGuiElement.setSiteName('domainCheck')
+    oGuiElement.setFunction('domainCheck')
+    oGuiElement.setThumbnail(os.path.join(ART, 'domain_check.png'))
+    DomainCheck = oGuiElement
+
+    # GUI ResolveURL Update
     oGuiElement = cGuiElement()
     oGuiElement.setTitle(cConfig().getLocalizedString(30121))
-    oGuiElement.setSiteName('devUpdates')
-    oGuiElement.setFunction('devUpdates')
-    oGuiElement.setThumbnail(os.path.join(ART, 'manuel_update.png'))
+    oGuiElement.setSiteName('manualResolverUpdate')
+    oGuiElement.setFunction('manualResolverUpdate')
+    oGuiElement.setThumbnail(os.path.join(ART, 'resolveurl_update.png'))
     DevUpdateMan = oGuiElement
-    return PluginInfo, xStreamSettings, resolveurlSettings, DevUpdateMan
+
+    return PluginInfo, xStreamSettings, resolveurlSettings, DomainCheck, DevUpdateMan
+
+
+def manualDomainCheck():
+    cPluginHandler().checkDomain()
+    # Plugin-Daten aktualisieren mit neuen Domains
+    cPluginHandler().getAvailablePlugins()
 
 
 def globalSearchGuiElement():
@@ -259,6 +336,31 @@ def globalSearchGuiElement():
     return oGuiElement
 
 
+def tmdbBrowserGuiElement():
+    ART = os.path.join(cConfig().getAddonInfo('path'), 'resources', 'art')
+
+    # Create a gui element for TMDB-based discovery (Bridge zu searchAlter / 'Weitere Quellen')
+    oGuiElement = cGuiElement()
+    oGuiElement.setTitle('TMDB Browser')
+    oGuiElement.setSiteName('tmdb_browser')
+    oGuiElement.setFunction('load')
+    oGuiElement.setThumbnail(os.path.join(ART, 'tmdb_browser.png'))
+    return oGuiElement
+
+
+def vavooTvGuiElement():
+    ART = os.path.join(cConfig().getAddonInfo('path'), 'resources', 'art')
+
+    # Eigenstaendiger Live-TV Menuepunkt (Vavoo). Laedt direkt in die Laenderliste.
+    # Eigene Logik in resources/lib/vavoo/, Dispatch ueber site=vavootv in parseUrl().
+    oGuiElement = cGuiElement()
+    oGuiElement.setTitle(cConfig().getLocalizedString(30842))
+    oGuiElement.setSiteName('vavootv')
+    oGuiElement.setFunction('load')
+    oGuiElement.setThumbnail(os.path.join(ART, 'vavoo.png'))
+    return oGuiElement
+
+
 def showHosterGui(sFunction):
     from resources.lib.gui.hoster import cHosterGui
     oHosterGui = cHosterGui()
@@ -267,75 +369,132 @@ def showHosterGui(sFunction):
     return True
 
 
+def _serializeSearchResults(results):
+    """Serialize search results list to a JSON string for Window property caching."""
+    serialized = []
+    for result in results:
+        serialized.append({
+            'guiElement': result['guiElement'].to_dict(),
+            'params': result['params'].to_dict() if hasattr(result['params'], 'to_dict') else {},
+            'isFolder': result['isFolder'],
+        })
+    return json.dumps(serialized, ensure_ascii=False)
+
+
+def _deserializeSearchResults(data):
+    """Reconstruct search results list from a cached JSON string."""
+    results = []
+    for entry in json.loads(data):
+        results.append({
+            'guiElement': cGuiElement.from_dict(entry['guiElement']),
+            'params': ParameterHandler.from_dict(entry['params']),
+            'isFolder': entry['isFolder'],
+        })
+    return results
+
+
 def searchGlobal(sSearchText=False):
-	oGui = cGui()
-	oGui.globalSearch = True
-	oGui._collectMode = True
+    oGui = cGui()
+    oGui.globalSearch = True
+    win = xbmcgui.Window(10000)
 
-	if not sSearchText:
-		sSearchText = oGui.showKeyBoard(sHeading=cConfig().getLocalizedString(30280))  # Bitte Suchbegriff eingeben
-	if not sSearchText:
-		oGui.setEndOfDirectory()
-		return True
+    if not sSearchText:
+        # Check if we have a cached search text (e.g. coming back from playback)
+        sSearchText = win.getProperty('xstream.globalSearchText')
 
-	aPlugins = cPluginHandler().getAvailablePlugins()
-	dialog = xbmcgui.DialogProgress()
-	dialog.create(cConfig().getLocalizedString(30122), cConfig().getLocalizedString(30123))
+        if sSearchText:
+            # We have a cached search term — try to load cached results
+            cachedResults = win.getProperty('xstream.globalSearchResults')
+            if cachedResults:
+                try:
+                    results = _deserializeSearchResults(cachedResults)
+                    total = len(results)
+                    for result in sorted(results, key=lambda k: k['guiElement'].getSiteName()):
+                        oGui.addFolder(result['guiElement'], result['params'], bIsFolder=result['isFolder'], iTotal=total)
+                    oGui.setView()
+                    oGui.setEndOfDirectory()
+                    return True
+                except Exception:
+                    import traceback
+                    logger.error('Search cache restore failed: %s' % traceback.format_exc())
+                    # Cache broken — fall through to fresh search
+                    win.clearProperty('xstream.globalSearchResults')
 
-	numPlugins = len(aPlugins)
-	searchablePlugins = [pluginEntry for pluginEntry in aPlugins if pluginEntry['globalsearch'] not in ['false', '']]
+        if not sSearchText:
+            sSearchText = oGui.showKeyBoard(sHeading=cConfig().getLocalizedString(30280))
+        if not sSearchText:
+            # Abbruch/leere Eingabe: KEIN endOfDirectory, sonst landet man
+            # in einem leeren Verzeichnis - Kodi bleibt so in der aktuellen Liste.
+            return True
 
-	def worker(pluginEntry):
-		log(cConfig().getLocalizedString(30166) + ' -> [xstream]: Searching for %s at %s' % (sSearchText, pluginEntry['id']),LOGNOTICE)
-		_pluginSearch(pluginEntry, sSearchText, oGui)
-		return pluginEntry['name']
+    # New search — clear old cached results
+    win.clearProperty('xstream.globalSearchResults')
+    win.setProperty('xstream.globalSearchText', sSearchText)
 
-	with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-		future_to_plugin = {executor.submit(worker, pluginEntry): pluginEntry for pluginEntry in searchablePlugins}
+    oGui._collectMode = True
 
-		for count, future in enumerate(concurrent.futures.as_completed(future_to_plugin)):
-			pluginEntry = future_to_plugin[future]
-			if dialog.iscanceled():
-				oGui.setEndOfDirectory()
-				return
-			try: pluginName = future.result()
-			except Exception as e:
-				pluginName = pluginEntry['name']
-				log(f"Fehler bei Plugin {pluginName}: {str(e)}", LOGERROR)
-			progress = (count + 1) * 50 // len(searchablePlugins)
-			dialog.update(progress, pluginName + cConfig().getLocalizedString(30125))
-	dialog.close()
+    aPlugins = cPluginHandler().getAvailablePlugins()
+    dialog = xbmcgui.DialogProgress()
+    dialog.create(cConfig().getLocalizedString(30122), cConfig().getLocalizedString(30123))
 
-	# Ergebnisse anzeigen
-	oGui._collectMode = False
-	total = len(oGui.searchResults)
-	dialog = xbmcgui.DialogProgress()
-	dialog.create(cConfig().getLocalizedString(30126), cConfig().getLocalizedString(30127))
+    numPlugins = len(aPlugins)
+    searchablePlugins = [pluginEntry for pluginEntry in aPlugins if pluginEntry['globalsearch'] not in ['false', '']]
 
-	for count, result in enumerate(sorted(oGui.searchResults, key=lambda k: k['guiElement'].getSiteName()), 1):
-		if dialog.iscanceled():
-			oGui.setEndOfDirectory()
-			return
-		oGui.addFolder(result['guiElement'], result['params'], bIsFolder=result['isFolder'], iTotal=total)
-		dialog.update(count * 100 // total, str(count) + cConfig().getLocalizedString(30128) + str(total) + ': ' + result['guiElement'].getTitle())
+    def worker(pluginEntry):
+        logger.debug('Searching for %s at %s' % (sSearchText, pluginEntry['id']))
+        _pluginSearch(pluginEntry, sSearchText, oGui)
+        return pluginEntry['name']
 
-	dialog.close()
-	oGui.setView()
-	oGui.setEndOfDirectory()
-	return True
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        future_to_plugin = {executor.submit(worker, pluginEntry): pluginEntry for pluginEntry in searchablePlugins}
+
+        for count, future in enumerate(concurrent.futures.as_completed(future_to_plugin)):
+            pluginEntry = future_to_plugin[future]
+            if dialog.iscanceled():
+                oGui.setEndOfDirectory()
+                return
+            try: pluginName = future.result()
+            except Exception as e:
+                pluginName = pluginEntry['name']
+                logger.error(f"Fehler bei Plugin {pluginName}: {str(e)}")
+            progress = (count + 1) * 50 // len(searchablePlugins)
+            dialog.update(progress, pluginName + cConfig().getLocalizedString(30125))
+    dialog.close()
+
+    # Cache the results for re-use when navigating back
+    try:
+        win.setProperty('xstream.globalSearchResults', _serializeSearchResults(oGui.searchResults))
+    except Exception:
+        import traceback
+        logger.error('Search cache save failed: %s' % traceback.format_exc())
+
+    # Ergebnisse anzeigen
+    oGui._collectMode = False
+    total = len(oGui.searchResults)
+    dialog = xbmcgui.DialogProgress()
+    dialog.create(cConfig().getLocalizedString(30126), cConfig().getLocalizedString(30127))
+
+    for count, result in enumerate(sorted(oGui.searchResults, key=lambda k: k['guiElement'].getSiteName()), 1):
+        if dialog.iscanceled():
+            oGui.setEndOfDirectory()
+            return
+        oGui.addFolder(result['guiElement'], result['params'], bIsFolder=result['isFolder'], iTotal=total)
+        dialog.update(count * 100 // total, str(count) + cConfig().getLocalizedString(30128) + str(total) + ': ' + result['guiElement'].getTitle())
+
+    dialog.close()
+    oGui.setView()
+    oGui.setEndOfDirectory()
+    return True
 
 def searchAlter(params):
     searchTitle = params.getValue('searchTitle')
     searchImdbId = params.getValue('searchImdbID')
-    searchYear = params.getValue('searchYear')
 
-    # Jahr aus dem Titel extrahieren
+    # Klammer-Jahr vom Titel abschneiden (Jahr wird nicht mehr gefiltert)
     if ' (19' in searchTitle or ' (20' in searchTitle:
         isMatch, aYear = cParser.parse(searchTitle, r'(.*?) \((\d{4})\)')
         if isMatch:
             searchTitle = aYear[0][0]
-            if not searchYear:
-                searchYear = str(aYear[0][1])
 
     # Staffel oder Episodenkennung abschneiden
     for token in [' S0', ' E0', ' - Staffel', ' Staffel']:
@@ -345,6 +504,30 @@ def searchAlter(params):
 
     oGui = cGui()
     oGui.globalSearch = True
+    win = xbmcgui.Window(10000)
+
+    # Cache prüfen: gleicher Titel wie letztes Mal?
+    cachedTitle = win.getProperty('xstream.alterSearchTitle')
+    if cachedTitle == searchTitle:
+        cachedResults = win.getProperty('xstream.alterSearchResults')
+        if cachedResults:
+            try:
+                results = _deserializeSearchResults(cachedResults)
+                total = len(results)
+                for result in sorted(results, key=lambda k: k['guiElement'].getSiteName()):
+                    oGui.addFolder(result['guiElement'], result['params'], bIsFolder=result['isFolder'], iTotal=total)
+                oGui.setView()
+                oGui.setEndOfDirectory()
+                return True
+            except Exception:
+                import traceback
+                logger.error('Alter search cache restore failed: %s' % traceback.format_exc())
+                win.clearProperty('xstream.alterSearchResults')
+
+    # Neuer Titel oder kein Cache — neue Suche starten
+    win.clearProperty('xstream.alterSearchResults')
+    win.setProperty('xstream.alterSearchTitle', searchTitle)
+
     oGui._collectMode = True
     aPlugins = cPluginHandler().getAvailablePlugins()
 
@@ -357,7 +540,7 @@ def searchAlter(params):
     ]
 
     def worker(pluginEntry):
-        log(cConfig().getLocalizedString(30166) + ' -> [xstream]: Searching for ' + searchTitle + pluginEntry['id'], LOGNOTICE)
+        logger.debug('Searching for ' + searchTitle + pluginEntry['id'])
         _pluginSearch(pluginEntry, searchTitle, oGui)
         return pluginEntry['name']
 
@@ -373,7 +556,7 @@ def searchAlter(params):
                 name = future.result()
             except Exception as e:
                 name = plugin['name']
-                log(f"Fehler bei Plugin {name}: {str(e)}", LOGERROR)
+                logger.error(f"Fehler bei Plugin {name}: {str(e)}")
             dialog.update((count + 1) * 50 // len(searchablePlugins) + 50, name + cConfig().getLocalizedString(30125))
 
     dialog.close()
@@ -382,14 +565,19 @@ def searchAlter(params):
     filteredResults = []
     for result in oGui.searchResults:
         guiElement = result['guiElement']
-        log(cConfig().getLocalizedString(30166) + ' -> [xstream]: Site: %s Titel: %s' % (guiElement.getSiteName(), guiElement.getTitle()), LOGNOTICE)
+        logger.debug('Site: %s Titel: %s' % (guiElement.getSiteName(), guiElement.getTitle()))
         if searchTitle not in guiElement.getTitle():
-            continue
-        if guiElement._sYear and searchYear and guiElement._sYear != searchYear:
             continue
         if searchImdbId and guiElement.getItemProperties().get('imdbID') != searchImdbId:
             continue
         filteredResults.append(result)
+
+    # Gefilterte Ergebnisse cachen
+    try:
+        win.setProperty('xstream.alterSearchResults', _serializeSearchResults(filteredResults))
+    except Exception:
+        import traceback
+        logger.error('Alter search cache save failed: %s' % traceback.format_exc())
 
     oGui._collectMode = False
     total = len(filteredResults)
@@ -422,7 +610,7 @@ def searchTMDB(params):
     ]
 
     def worker(pluginEntry):
-        log(cConfig().getLocalizedString(30166) + ' -> [xstream]: Searching for %s at %s' % (sSearchText, pluginEntry['id']), LOGNOTICE)
+        logger.debug('Searching for %s at %s' % (sSearchText, pluginEntry['id']))
         _pluginSearch(pluginEntry, sSearchText, oGui)
         return pluginEntry['name']
 
@@ -438,7 +626,7 @@ def searchTMDB(params):
                 name = future.result()
             except Exception as e:
                 name = plugin['name']
-                log(f"Fehler bei Plugin {name}: {str(e)}", LOGERROR)
+                logger.error(f"Fehler bei Plugin {name}: {str(e)}")
             dialog.update((count + 1) * 50 // len(searchablePlugins) + 50, name + cConfig().getLocalizedString(30125))
 
     dialog.close()
@@ -468,6 +656,6 @@ def _pluginSearch(pluginEntry, sSearchText, oGui):
         function = getattr(plugin, '_search')
         function(oGui, sSearchText)
     except Exception:
-        log(cConfig().getLocalizedString(30166) + ' -> [xstream]: ' + pluginEntry['name'] + ': search failed', LOGERROR)
+        logger.error(pluginEntry['name'] + ': search failed')
         import traceback
-        log(traceback.format_exc())
+        logger.error(traceback.format_exc())

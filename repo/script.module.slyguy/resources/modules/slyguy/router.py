@@ -109,19 +109,9 @@ def dispatch(url=None):
     if url is None:
         if hasattr(sys, 'listitem') and len(sys.argv) == 1:
             url = ROUTE_CONTEXT
-            try:
-                #Kodi 19+ only
-                url += '?' + sys.argv[1]
-            except IndexError:
-                pass
             sys.argv = [sys.argv[0], -1, '']
         elif sys.argv[0].lower().endswith('.py'):
             url = ROUTE_SCRIPT
-            try:
-                #Kodi 19+ only
-                url += '?' + sys.argv[1]
-            except IndexError:
-                pass
             sys.argv = [sys.argv[0], -1, '']
         else:
             url = sys.argv[0] + sys.argv[2]
@@ -134,6 +124,9 @@ def dispatch(url=None):
 
         if hasattr(sys, 'listitem'):
             params['listitem'] = sys.listitem
+
+        if hasattr(sys, 'slyguy_extra'):
+            params['slyguy_extra'] = sys.slyguy_extra
 
         try:
             function(**params)

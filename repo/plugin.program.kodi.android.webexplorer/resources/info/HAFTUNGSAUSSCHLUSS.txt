@@ -1,0 +1,45 @@
+HAFTUNGSAUSSCHLUSS (EILHAFTUNGSAUSSCHLUSS) FÜR "KODI ANDROID WEB FILE EXPLORER"
+
+1. Allgemeine Hinweise
+Die vorliegende Software "Kodi Android Web File Explorer" (im Folgenden "Software") wird unter der Lizenz GPL-2.0-or-later bereitgestellt. Die Nutzung der Software erfolgt auf eigenes Risiko. Der Autor, die Mitwirkenden und die Verbreiter übernehmen keine Haftung für direkte oder indirekte Schäden, die aus der Nutzung, dem Betrieb, der Installation, dem Update oder dem Restore mit dieser Software entstehen.
+
+2. Keine Gewährleistung
+Die Software wird ohne ausdrückliche oder stillschweigende Gewährleistung bereitgestellt. Insbesondere wird keine Gewähr für die Eignung der Software für einen bestimmten Zweck, die Fehlerfreiheit, die Verfügbarkeit oder die Kompatibilität mit bestimmten Systemen übernommen. Soweit gesetzlich zulässig, sind alle Gewährleistungsansprüche ausgeschlossen.
+
+3. Datenverlust und Restore-Risiken
+- Beim Erstellen, Übertragen oder Einspielen von Backups besteht das Risiko von Datenverlust, Datenkorruption oder Inkonsistenzen.
+- Der Nutzer ist allein verantwortlich für die Sicherung seiner Daten vor dem Einsatz der Software.
+- Vor einem Restore wird dringend empfohlen, ein vollständiges, verifiziertes Backup anzulegen und Kodi vor kritischen Operationen zu stoppen oder die empfohlenen Force-Stop‑Abläufe zu befolgen.
+- Der Autor übernimmt keine Haftung für verlorene, beschädigte oder unvollständige Daten, die durch Nutzung der Software oder durch fehlerhafte Restore‑Abläufe entstehen.
+
+4. System- und Hardware-Schäden
+- Operationen mit hoher I/O‑Last (z. B. große Kopier-, ZIP‑ oder Löschvorgänge) können die Lebensdauer von Speichermedien beeinflussen oder bei fehlerhafter Hardware zu Ausfällen führen.
+- Der Autor haftet nicht für Schäden an Hardware, Speichermedien oder sonstigen Komponenten, die durch die Nutzung der Software verursacht werden.
+
+5. Drittsoftware und Systemabhängigkeiten
+- Die Software nutzt Systemfunktionen und Bibliotheken des Betriebssystems (Android, Kodi). Änderungen, Inkompatibilitäten oder Fehler in diesen Komponenten können das Verhalten der Software beeinflussen.
+- Der Autor übernimmt keine Haftung für Probleme, die durch Drittsoftware, Systemupdates oder proprietäre Treiber entstehen.
+
+6. Sicherheit und Netzwerkzugriff
+- Der Betrieb eines lokalen Webservers kann Sicherheitsrisiken bergen. Der Nutzer ist verantwortlich für die Absicherung des Netzwerks und die Konfiguration von Zugangsbeschränkungen (z. B. Aktivierung von Login, Firewall‑Regeln).
+- Der Autor haftet nicht für unbefugten Zugriff, Datenabfluss oder Sicherheitsvorfälle, die aus unsachgemäßer Konfiguration oder unsicheren Netzwerken resultieren.
+
+7. Haftungsbegrenzung
+- Soweit gesetzlich zulässig, ist die Haftung des Autors und der Mitwirkenden auf Vorsatz und grobe Fahrlässigkeit beschränkt. Für leichte Fahrlässigkeit besteht nur Haftung bei Verletzung wesentlicher Vertragspflichten (Kardinalpflichten), und auch hier ist die Haftung auf den typischerweise vorhersehbaren Schaden begrenzt.
+- In Ländern oder Rechtsordnungen, in denen eine vollständige Haftungsfreizeichnung unzulässig ist, gelten die dort zwingenden gesetzlichen Regelungen.
+
+8. Empfehlungen zur Risikominimierung
+- Erstellen Sie vor jeder größeren Operation (Restore, Massenlöschung, Massenkopie) ein vollständiges Backup.
+- Testen Sie Restore‑Prozesse in einer sicheren Umgebung, bevor Sie sie produktiv einsetzen.
+- Verwenden Sie die asynchronen Task‑Mechanismen für große Operationen und überwachen Sie den Task‑Status.
+- Bei Restore: beenden Sie Kodi per Force Stop, bevor Sie das System neu starten, um Überschreiben durch im RAM gehaltene Daten zu vermeiden.
+
+9. Kontakt und Support
+- Für Fragen, Fehlerberichte oder Supportanfragen nutzen Sie bitte die Projektseite oder das Repository des Addons. Der Autor bemüht sich um Unterstützung, kann jedoch keinen garantierten Supportumfang zusagen.
+
+10. Schlussbestimmungen
+- Dieser Haftungsausschluss ergänzt die Lizenzbedingungen (GPL‑2.0‑or‑later) und ersetzt keine gesetzlichen Rechte des Nutzers.
+- Sollten einzelne Bestimmungen dieses Haftungsausschlusses unwirksam sein, bleibt die Wirksamkeit der übrigen Bestimmungen unberührt.
+
+Stand: Version 1.2.0
+© André Albus

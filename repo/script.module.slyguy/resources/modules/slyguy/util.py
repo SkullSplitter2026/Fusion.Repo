@@ -789,6 +789,9 @@ def fix_language(language=None):
     if language.lower() == 'pt-br':
         return 'pb'
 
+    if language.lower() == 'none':
+        return None
+
     # Chines Hong Kong -> Yue / Cantonese https://en.wikipedia.org/wiki/Yue_Chinese
     if language.lower() in ('zh-hk'):
         # not supported in kodi?

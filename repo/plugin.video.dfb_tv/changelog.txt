@@ -1,11 +1,15 @@
 ﻿
+[B]Version 2.1.3+matrix.1  (02.06.2026)[/B]
+- fixed: Die Rubrik = 'Live-Events und Aktuelles' kann nicht geöffnet werden (Seitenstruktur auf YouTube verändert)
+- optimized: ScrapeTube-Script zum auswerten der Video Inhalte
+
 [B]Version 2.1.2+matrix.1  (12.10.2025)[/B]
 - fixed: Manche Streams in der Rubrik = 'Live-Events und Aktuelles' sind nicht abspielbar (Error: 401)
 
 [B]Version 2.1.1+matrix.1  (25.05.2025)[/B]
 - fixed: Es werden nicht alle vorhandenen Playlisten vom 'DFB' auf YOUTUBE aufgelistet
-- removed: Rubrik = Sämtliche Rubriken der Webseite 'tv.dfb.de' (Die API der Webseite des DFB wurde abgeschaltet und neue Videos werden nur noch auf Youtube gelistet)
-- comment: *Da das Addon jetzt nur noch auf den Beiträgen des 'DFB-Youtube-Kanals' basiert, ist für die Funktionen ein Youtube-API-Key in den settings erforderlich !*
+- removed: Rubrik = Sämtliche Rubriken der Webseite 'tv.dfb.de' (Die API der Webseite des DFB wurde abgeschaltet und neue Videos werden nur noch auf YouTube gelistet)
+- comment: *Da das Addon jetzt nur noch auf den Beiträgen des 'DFB-Youtube-Kanals' basiert, ist für die Funktionen ein YouTube-API-Key in den settings erforderlich !*
 
 [B]Version 2.1.0+matrix.1  (13.06.2024)[/B]
 - added: Rubrik = Live-Events und Aktuelles unter 'Weitere Beiträge auf YOUTUBE'
@@ -13,7 +17,7 @@
 
 [B]Version 2.0.9+matrix.1  (02.06.2024)[/B]
 - added: Rubriken = Beach Soccer, Männer - Ligen, Männer-Nationalmannschaft und Frauen - Ligen
-- added: Dynamische Playlisten des 'Deutschen Fußball-Bundes (DFB)' auf Youtube immer aktuell
+- added: Dynamische Playlisten des 'Deutschen Fußball-Bundes (DFB)' auf YouTube immer aktuell
 - optimized: Mehr Video-Beiträge pro Seite anzeigen (bisher waren es max. 10, jetzt 40)
 
 [B]Version 2.0.8+matrix.1  (02.07.2023)[/B]

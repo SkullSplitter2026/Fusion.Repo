@@ -12,11 +12,14 @@
     
 # 2022-12-06 Heptamer - Suchfunktion überarbeitet
 
+import ast
+import re
 import xbmcgui
 
-from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
-from resources.lib.tools import logger, cParser, cUtil
+from resources.lib.logger import logger
+from resources.lib.tools import cParser, cUtil
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.config import cConfig
 from resources.lib.gui.gui import cGui
@@ -31,15 +34,15 @@ if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'false':
     logger.info('-> [SitePlugin]: globalSearch for %s is deactivated.' % SITE_NAME)
 
 # Domain Abfrage
-DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain') # Domain Auswahl über die xStream Einstellungen möglich
+DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain', 'aniworld.to') # Domain Auswahl über die xStream Einstellungen möglich
 STATUS = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '_status') # Status Code Abfrage der Domain
 ACTIVE = cConfig().getSetting('plugin_' + SITE_IDENTIFIER) # Ob Plugin aktiviert ist oder nicht
 
 URL_MAIN = 'https://' + DOMAIN
-# URL_MAIN = 'https://aniworld.to'
 URL_SERIES = URL_MAIN + '/animes'
 URL_POPULAR = URL_MAIN + '/beliebte-animes'
 URL_NEW_EPISODES = URL_MAIN + '/neue-episoden'
+URL_NEW_ANIMES = URL_MAIN          # "Neue Animes" Sektion liegt auf der Startseite
 URL_LOGIN = URL_MAIN + '/login'
 REFERER = 'https://' + DOMAIN
 
@@ -47,33 +50,150 @@ REFERER = 'https://' + DOMAIN
 
 def load(): # Menu structure of the site plugin
     logger.info('Load %s' % SITE_NAME)
+    xbmcgui.Window(10000).clearProperty('xstream.aniworld.lastSearchText')
+    xbmcgui.Window(10000).clearProperty('xstream.aniworld.lastYear')
     params = ParameterHandler()
-    username = cConfig().getSetting('aniworld.user')    # Username
-    password = cConfig().getSetting('aniworld.pass')    # Password
-    if username == '' or password == '':                # If no username and password were set, close the plugin!
-        xbmcgui.Dialog().ok(cConfig().getLocalizedString(30241), cConfig().getLocalizedString(30263))   # Info Dialog!
-    else:
-        params.setParam('sUrl', URL_SERIES)
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30518), SITE_IDENTIFIER, 'showAllSeries'), params)    # All Series
-        params.setParam('sUrl', URL_NEW_EPISODES)
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30516), SITE_IDENTIFIER, 'showNewEpisodes'), params)  # New Episodes
-        params.setParam('sUrl', URL_POPULAR)
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30519), SITE_IDENTIFIER, 'showEntries'), params)    # Popular Series
-        params.setParam('sUrl', URL_MAIN)
-        params.setParam('sCont', 'catalogNav')
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30517), SITE_IDENTIFIER, 'showValue'), params)    # From A-Z
-        params.setParam('sCont', 'homeContentGenresList')
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30506), SITE_IDENTIFIER, 'showValue'), params)    # Genre
-        cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Search
-        cGui().setEndOfDirectory()
+    # Login ist optional — Settings 'aniworld.user' / 'aniworld.pass' bleiben
+    # in settings.xml verfuegbar. Bei gesetzten Credentials wird in
+    # getHosterUrl() ein Login-POST gemacht (Cookie-basiert), sonst direkt
+    # Hoster geholt — Backend funktioniert auch ohne Login.
+
+    # Neues  (Animes + Episoden)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30813), SITE_IDENTIFIER, 'showNeues'), params)
+    # Beliebte Animes
+    params.setParam('sUrl', URL_POPULAR)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30519), SITE_IDENTIFIER, 'showEntries'), params)
+    # Genres (lädt direkt die Genre-Liste)
+    params.setParam('sUrl', URL_MAIN)
+    params.setParam('sCont', 'homeContentGenresList')
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30815), SITE_IDENTIFIER, 'showValue'), params)
+    # Aki: Jahr-Suche (User gibt Jahr ein, /animes/jahr/YYYY)
+    params = ParameterHandler()
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30564), SITE_IDENTIFIER, 'showYearSearch'), params)
+    # A-Z (direkt in die Buchstaben-Auswahl)
+    params = ParameterHandler()
+    params.setParam('sUrl', URL_MAIN)
+    params.setParam('sCont', 'catalogNav')
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30814), SITE_IDENTIFIER, 'showValue'), params)
+    # Suche
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)
+    cGui().setEndOfDirectory()
+
+
+def showNeues():
+    """Submenu: Animes + Episoden"""
+    params = ParameterHandler()
+    # Animes
+    params.setParam('sUrl', URL_NEW_ANIMES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30561), SITE_IDENTIFIER, 'showNewAnimes'), params)  # Animes
+    # Episoden
+    params.setParam('sUrl', URL_NEW_EPISODES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30557), SITE_IDENTIFIER, 'showNewEpisodes'), params)  # Episoden (30557 wie SerienStream; 30516 "Neue Folgen" bleibt Burningseries)
+    cGui().setEndOfDirectory()
+
+
+def showAZMenu():
+    """Submenu: Alle Serien + Von A-Z"""
+    params = ParameterHandler()
+    # Alle Serien
+    params.setParam('sUrl', URL_SERIES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30518), SITE_IDENTIFIER, 'showAllSeries'), params)
+    # Von A-Z
+    params.setParam('sUrl', URL_MAIN)
+    params.setParam('sCont', 'catalogNav')
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30517), SITE_IDENTIFIER, 'showValue'), params)
+    cGui().setEndOfDirectory()
+
+
+def showNewAnimes(entryUrl=False, sGui=False):
+    """
+    Parst die "Neue Animes"-Sektion vom AniWorld Startseiten-Karussell.
+    HTML-Struktur:
+        <h2>Neue Animes</h2>
+        <div class="previews">
+            <div class="coverListItem">
+                <a href="/anime/stream/...">
+                    <img data-src="/public/img/cover/...">
+                    <h3>Titel <span ...></h3>
+                    <small>Genre</small>
+                </a>
+            </div>
+            ...
+        </div>
+        <div class="cf">   ← Ende der Sektion
+    """
+    oGui = sGui if sGui else cGui()
+    params = ParameterHandler()
+    if not entryUrl:
+        entryUrl = params.getValue('sUrl')
+
+    oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
+
+    sHtmlContent = oRequest.request()
+    if not sHtmlContent:
+        if not sGui: oGui.showInfo()
+        return
+
+    # --- Sektion isolieren: alles zwischen "Neue Animes" Heading und <div class="cf"> ---
+    isMatch, sContainer = cParser.parseSingleResult(
+        sHtmlContent,
+        r'Neue Animes<\/h2>.*?<div class="previews">(.*?)<\/div>\s*<\/div>\s*<div class="cf">'
+    )
+    if not isMatch:
+        logger.info('[%s] showNewAnimes: Neue-Animes-Sektion nicht gefunden.' % SITE_NAME)
+        if not sGui: oGui.showInfo()
+        return
+
+    # --- Jedes coverListItem parsen: URL + Thumbnail (data-src) + Titel + Genre ---
+    # Beispiel-Item:
+    #   <div class="coverListItem"><a href="/anime/stream/rooster-fighter" title="...">
+    #       ...
+    #       <img data-src="/public/img/cover/rooster-fighter-stream-cover-xxx_150x225.png" ...>
+    #       ...
+    #       <h3>Rooster Fighter <span class="paragraph-end black"></span></h3>
+    #       <small>Action</small>
+    #   </a></div>
+    pattern = (
+        r'<div class="coverListItem"><a href="(/anime/stream/[^"]+)"[^>]*>'  # URL
+        r'.*?data-src="([^"]+)"[^>]*>'                                        # Thumbnail
+        r'.*?<h3>([^<]+)<span'                                                # Titel
+        r'.*?<small>([^<]*)<\/small>'                                         # Genre
+    )
+    isMatch, aResult = cParser.parse(sContainer, pattern)
+    if not isMatch:
+        logger.info('[%s] showNewAnimes: Keine Items im Container gefunden.' % SITE_NAME)
+        if not sGui: oGui.showInfo()
+        return
+
+    total = len(aResult)
+    for sUrl, sThumbnail, sName, sGenre in aResult:
+        sName = sName.strip()
+        sGenre = sGenre.strip()
+        if not sName:
+            continue
+        sThumbnail = sThumbnail if sThumbnail.startswith('http') else URL_MAIN + sThumbnail
+        sFullUrl = URL_MAIN + sUrl
+
+        oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showSeasons')
+        oGuiElement.setMediaType('tvshow')
+        oGuiElement.setTVShowTitle(sName)
+        oGuiElement.setThumbnail(sThumbnail)
+        if sGenre:
+            oGuiElement.setDescription('[B]Genre:[/B] ' + sGenre)
+
+        params.setParam('sUrl', sFullUrl)
+        params.setParam('TVShowTitle', sName)
+        oGui.addFolder(oGuiElement, params, True, total)
+
+    if not sGui:
+        oGui.setView('tvshows')
+        oGui.setEndOfDirectory()
 
 
 def showValue():
     params = ParameterHandler()
     sUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(sUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24 # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
     isMatch, sContainer = cParser.parseSingleResult(sHtmlContent, '<ul[^>]*class="%s"[^>]*>(.*?)<\\/ul>' % params.getValue('sCont'))
     if isMatch:
@@ -94,8 +214,6 @@ def showAllSeries(entryUrl=False, sGui=False, sSearchText=False):
     params = ParameterHandler()
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24 # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
     pattern = '<a[^>]*href="(\\/anime\\/[^"]*)"[^>]*>(.*?)</a>'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
@@ -123,21 +241,24 @@ def showNewEpisodes(entryUrl=False, sGui=False):
     if not entryUrl:
         entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 4 # HTML Cache Zeit 4 Stunden
     sHtmlContent = oRequest.request()
-    pattern = r'<div[^>]*class="col-md-[^"]*"[^>]*>\s*<a[^>]*href="([^"]*)"[^>]*>\s*<strong>([^<]+)</strong>\s*<span[^>]*>([^<]+)</span>'
+    # Flag-Icon hinter dem </a> optional mitnehmen (german/japanese-german/japanese-english.svg, teils lazy via data-src);
+    # (?!<strong>) verhindert bei flagloser Zeile den Überlauf in die nächste Zeile
+    pattern = r'<div[^>]*class="col-md-[^"]*"[^>]*>\s*<a[^>]*href="([^"]*)"[^>]*>\s*<strong>([^<]+)</strong>\s*<span[^>]*>([^<]+)</span>(?:(?:(?!<strong>).)*?class="flag"[^>]*(?:data-src|src)="[^"]*?([\w-]+)\.svg")?'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
     if not isMatch:
         if not sGui: oGui.showInfo()
         return
 
     total = len(aResult)
-    for sUrl, sName, sInfo in aResult:
+    for sUrl, sName, sInfo, sFlag in aResult:
         sMovieTitle = sName + ' ' + sInfo
+        sDisplayTitle = sMovieTitle
+        if sFlag:  # exaktes Mapping, kein Substring-Check ('german' steckt auch in 'japanese-german')
+            sDisplayTitle += ' [' + {'german': 'DE', 'japanese-german': 'JP-DE', 'japanese-english': 'JP-EN'}.get(sFlag, sFlag.upper()) + ']'
         oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showSeasons')
         oGuiElement.setMediaType('tvshow')
-        oGuiElement.setTitle(sMovieTitle)
+        oGuiElement.setTitle(sDisplayTitle)
         params.setParam('sUrl', URL_MAIN + sUrl)
         params.setParam('TVShowTitle', sMovieTitle)
 
@@ -153,8 +274,6 @@ def showEntries(entryUrl=False, sGui=False):
     if not entryUrl:
         entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6 # HTML Cache Zeit 6 Stunden
     sHtmlContent = oRequest.request()
     #Aufbau pattern
     #'<div[^>]*class="col-md-[^"]*"[^>]*>.*?'  # start element
@@ -192,6 +311,7 @@ def showSeasons():
     params = ParameterHandler()
     sUrl = params.getValue('sUrl')
     sTVShowTitle = params.getValue('TVShowTitle')
+    sTmdbID = params.getValue('tmdbID') or ''
     oRequest = cRequestHandler(sUrl)
     sHtmlContent = oRequest.request()
     pattern = '<div[^>]*class="hosterSiteDirectNav"[^>]*>.*?<ul>(.*?)</ul>'
@@ -209,11 +329,17 @@ def showSeasons():
         if sThumbnail.startswith('/'):
             sThumbnail = URL_MAIN + sThumbnail
 
+    # Aki: Year aus Detail-Seite extrahieren (itemprop="startDate")
+    sYear = ''
+    year_match = re.search(r'itemprop="startDate"[^>]*>\s*<a[^>]*>(\d{4})</a>', sHtmlContent)
+    if year_match:
+        sYear = year_match.group(1)
+
     total = len(aResult)
     for sUrl, sName, sNr in aResult:
         isMovie = sUrl.endswith('filme')
         if 'Alle Filme' in sName:
-            sName = 'Filme'
+            sName = cConfig().getLocalizedString(30559)
         oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showEpisodes')
         oGuiElement.setMediaType('season' if not isMovie else 'movie')
         if isThumbnail:
@@ -223,7 +349,12 @@ def showSeasons():
         if not isMovie:
             oGuiElement.setTVShowTitle(sTVShowTitle)
             oGuiElement.setSeason(sNr)
+            if sTmdbID:
+                oGuiElement.addItemValue('tmdb_id', sTmdbID)
             params.setParam('sSeason', sNr)
+        if sYear:
+            oGuiElement.addItemValue('year', sYear)
+            params.setParam('sYear', sYear)
         params.setParam('sThumbnail', sThumbnail)
         params.setParam('sUrl', URL_MAIN + sUrl)
         cGui().addFolder(oGuiElement, params, True, total)
@@ -241,8 +372,6 @@ def showEpisodes():
         sSeason = '0'
     isMovieList = sUrl.endswith('filme')
     oRequest = cRequestHandler(sUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 4  # HTML Cache Zeit 4 Stunden
     sHtmlContent = oRequest.request()
     pattern = '<table[^>]*class="seasonEpisodesList"[^>]*>(.*?)</table>'
     isMatch, sContainer = cParser.parseSingleResult(sHtmlContent, pattern)
@@ -270,6 +399,11 @@ def showEpisodes():
             sName += sNameGer if sNameGer else sNameEng
         oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showHosters')
         oGuiElement.setMediaType('episode' if not isMovieList else 'movie')
+        if isMovieList == True:
+            # Aki: Clean Title fuer Trailer-Match (Display-Label hat Episode-Prefix)
+            cleanTitle = (sNameEng or sNameGer or '').strip(' -')
+            if cleanTitle:
+                oGuiElement.addItemValue('originaltitle', cleanTitle)
         oGuiElement.setThumbnail(sThumbnail)
         if isDesc:
             oGuiElement.setDescription(sDesc)
@@ -400,15 +534,31 @@ def showHosters():
 
 
 def getHosterUrl(hUrl):
-    if type(hUrl) == str: hUrl = eval(hUrl)
+    if type(hUrl) == str: hUrl = ast.literal_eval(hUrl)
     username = cConfig().getSetting('aniworld.user')
     password = cConfig().getSetting('aniworld.pass')
-    Handler = cRequestHandler(URL_LOGIN, caching=False)
-    Handler.addHeaderEntry('Upgrade-Insecure-Requests', '1')
-    Handler.addHeaderEntry('Referer', ParameterHandler().getValue('entryUrl'))
-    Handler.addParameters('email', username)
-    Handler.addParameters('password', password)
-    Handler.request()
+
+    # Login ist optional: Wenn Credentials gesetzt sind, Cookie-basierten
+    # Login durchfuehren (kann Hoster-Auswahl/Qualitaet beeinflussen).
+    # Ohne Credentials direkt zur Hoster-URL springen — funktioniert auch.
+    if username and password:
+        Handler = cRequestHandler(URL_LOGIN, caching=False)
+        Handler.addHeaderEntry('Upgrade-Insecure-Requests', '1')
+        Handler.addHeaderEntry('Referer', ParameterHandler().getValue('entryUrl'))
+        Handler.addParameters('email', username)
+        Handler.addParameters('password', password)
+        Handler.request()
+
+    # DoodStream: haengt hinter Cloudflare.
+    # Embed-Seite selbst zu laden triggert den CF-Block ("CLOUDFLARE-SCHUTZ AKTIV").
+    # Wir reichen daher nur das Redirect-Ziel an ResolveURL weiter (wie einschalten),
+    # das die Seite selbst aufloest — byparr wird dafuer nicht mehr benoetigt.
+    if 'dood' in hUrl[1].lower():
+        Request = cRequestHandler(URL_MAIN + hUrl[0], caching=False)
+        Request.addHeaderEntry('Referer', ParameterHandler().getValue('entryUrl'))
+        Request.addHeaderEntry('Upgrade-Insecure-Requests', '1')
+        return [{'streamUrl': Request.getRedirectUrl(), 'resolved': False}]
+
     Request = cRequestHandler(URL_MAIN + hUrl[0], caching=False)
     Request.addHeaderEntry('Referer', ParameterHandler().getValue('entryUrl'))
     Request.addHeaderEntry('Upgrade-Insecure-Requests', '1')
@@ -425,10 +575,81 @@ def getHosterUrl(hUrl):
 
 
 def showSearch():
-    sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
-    if not sSearchText: return
+    win = xbmcgui.Window(10000)
+    sSearchText = win.getProperty('xstream.aniworld.lastSearchText')
+    if not sSearchText:
+        sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
+        if not sSearchText: return
+        win.setProperty('xstream.aniworld.lastSearchText', sSearchText)
     _search(False, sSearchText)
     cGui().setEndOfDirectory()
+
+
+def showYearSearch():
+    """Aki: Jahr-Suche — User gibt Jahr ein, oeffnet /animes/jahr/YYYY."""
+    win = xbmcgui.Window(10000)
+    sYear = win.getProperty('xstream.aniworld.lastYear')
+    if not sYear:
+        sYear = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30563))
+        if not sYear:
+            return
+        # Validierung: nur 4-stellige Jahre ab 1970
+        if not sYear.isdigit() or len(sYear) != 4 or int(sYear) < 1970:
+            return
+        win.setProperty('xstream.aniworld.lastYear', sYear)
+    searchUrl = URL_MAIN + '/animes/jahr/' + sYear
+    showYearEntries(searchUrl, sYear)
+
+
+def showYearEntries(entryUrl=False, sYear=''):
+    """Aki: Parser fuer /animes/jahr/YYYY Seite (mit Pagination).
+    HTML-Struktur: <a href="/anime/stream/..."> <img data-src="..."> <h3>Titel<span></span></h3> <small>Genre</small> </a>
+    """
+    oGui = cGui()
+    params = ParameterHandler()
+    # Bei Pagination-Call kommt entryUrl aus Params
+    if not entryUrl:
+        entryUrl = params.getValue('sUrl')
+    oRequest = cRequestHandler(entryUrl)
+    sHtmlContent = oRequest.request()
+    if not sHtmlContent:
+        oGui.showInfo()
+        return
+
+    # Pattern: URL + Thumbnail + Titel (ohne Genre im Title!)
+    pattern = (
+        r'href="(/anime/stream/[^"]+)"[^>]*>'
+        r'.*?data-src="([^"]+)"'
+        r'.*?<h3>([^<]+)<span[^>]*></span></h3>'
+        r'\s*<small>([^<]*)</small>'
+    )
+    isMatch, aResult = cParser.parse(sHtmlContent, pattern)
+    if not isMatch:
+        logger.info('[%s] showYearEntries: Keine Animes fuer Jahr %s gefunden.' % (SITE_NAME, sYear))
+        oGui.showInfo()
+        return
+
+    total = len(aResult)
+    for sUrl, sThumb, sName, sGenre in aResult:
+        sName = sName.strip()
+        sFullThumb = sThumb if sThumb.startswith('http') else URL_MAIN + sThumb
+        oGuiElement = cGuiElement(sName, SITE_IDENTIFIER, 'showSeasons')
+        oGuiElement.setMediaType('tvshow')
+        oGuiElement.setThumbnail(sFullThumb)
+        if sGenre:
+            oGuiElement.setDescription('[B]Genre:[/B] ' + sGenre.strip())
+        params.setParam('sUrl', URL_MAIN + sUrl)
+        params.setParam('TVShowTitle', sName)
+        oGui.addFolder(oGuiElement, params, True, total)
+
+    # Aki: Pagination — analog zu showEntries (Zeile 297)
+    pag_pattern = 'pagination">.*?<a href="([^"]+)">&gt;</a>.*?</a></div>'
+    isMatchNextPage, sNextUrl = cParser.parseSingleResult(sHtmlContent, pag_pattern)
+    if isMatchNextPage:
+        params.setParam('sUrl', sNextUrl)
+        oGui.addNextPage(SITE_IDENTIFIER, 'showYearEntries', params)
+    oGui.setView('tvshows')
+    oGui.setEndOfDirectory()
 
 
 def _search(oGui, sSearchText):
@@ -445,8 +666,6 @@ def SSsearch(sGui=False, sSearchText=False):
     oRequest.addHeaderEntry('Origin', REFERER)
     oRequest.addHeaderEntry('Content-Type', 'application/x-www-form-urlencoded; charset=UTF-8')
     oRequest.addHeaderEntry('Upgrade-Insecure-Requests', '1')
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24  # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
 
     if not sHtmlContent:

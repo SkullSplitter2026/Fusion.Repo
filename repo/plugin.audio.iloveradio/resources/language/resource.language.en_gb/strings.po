@@ -1,0 +1,131 @@
+# Kodi Media Center language file
+# Addon Name: I Love Music
+# Addon id: plugin.audio.iloveradio
+# Addon Provider: Sascha
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Kodi Addons\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+
+# MAIN MENU
+
+msgctxt "#30000"
+msgid "Search"
+msgstr ""
+
+msgctxt "#30001"
+msgid "Favorites"
+msgstr ""
+
+msgctxt "#30002"
+msgid "Categories"
+msgstr ""
+
+msgctxt "#30003"
+msgid "All Channels"
+msgstr ""
+
+msgctxt "#30004"
+msgid "Settings"
+msgstr ""
+
+
+# CONTEXT MENU
+
+msgctxt "#30010"
+msgid "Add to favorites"
+msgstr ""
+
+msgctxt "#30011"
+msgid "Remove from favorites"
+msgstr ""
+
+
+# SEARCH
+
+msgctxt "#30020"
+msgid "Search"
+msgstr ""
+
+msgctxt "#30021"
+msgid "No results found"
+msgstr ""
+
+
+# NOTIFICATIONS
+
+msgctxt "#30030"
+msgid "Now playing"
+msgstr ""
+
+msgctxt "#30031"
+msgid "M3U successfully exported"
+msgstr ""
+
+msgctxt "#30032"
+msgid "M3U export failed"
+msgstr ""
+
+
+# SETTINGS
+
+msgctxt "#30050"
+msgid "General"
+msgstr ""
+
+msgctxt "#30051"
+msgid "Show notifications"
+msgstr ""
+
+msgctxt "#30052"
+msgid "Enable fanart"
+msgstr ""
+
+msgctxt "#30053"
+msgid "Show settings in main menu"
+msgstr ""
+
+msgctxt "#30054"
+msgid "Stream type"
+msgstr ""
+
+msgctxt "#30055"
+msgid "Auto Refresh"
+msgstr ""
+
+msgctxt "#30056"
+msgid "Enable auto refresh"
+msgstr ""
+
+msgctxt "#30057"
+msgid "Refresh interval (seconds)"
+msgstr ""
+
+msgctxt "#30058"
+msgid "Live Metadata"
+msgstr ""
+
+msgctxt "#30059"
+msgid "Automatically update song title"
+msgstr ""
+
+msgctxt "#30060"
+msgid "Metadata interval (seconds)"
+msgstr ""
+
+msgctxt "#30061"
+msgid "M3U Export"
+msgstr ""
+
+msgctxt "#30062"
+msgid "Export path"
+msgstr ""
+
+msgctxt "#30063"
+msgid "Export M3U playlist"
+msgstr ""

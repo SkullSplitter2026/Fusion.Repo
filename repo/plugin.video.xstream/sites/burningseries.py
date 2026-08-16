@@ -10,12 +10,16 @@
 # SSsearch:      24 Stunden
 
 
+import ast
 import json
 import locale
+import re
 
-from resources.lib.handler.ParameterHandler import ParameterHandler
+import xbmcgui
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
-from resources.lib.tools import logger, cParser, cUtil
+from resources.lib.logger import logger
+from resources.lib.tools import cParser, cUtil, infoDialog
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.config import cConfig
 from resources.lib.gui.gui import cGui
@@ -38,7 +42,7 @@ if cConfig().getSetting('2captcha.pass') == '':
     logger.info('-> [SitePlugin]: 2Captcha API Key not set')
 
 # Domain Abfrage
-DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain', 'bs.to') # Domain Auswahl über die xStream Einstellungen möglich
+DOMAIN = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '.domain', 'burningseries.ac') # Domain Auswahl über die xStream Einstellungen möglich
 STATUS = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '_status') # Status Code Abfrage der Domain
 ACTIVE = cConfig().getSetting('plugin_' + SITE_IDENTIFIER) # Ob Plugin aktiviert ist oder nicht
 
@@ -54,6 +58,7 @@ URL_GENRES = URL_MAIN + '/serie-genre'
 
 def load(): # Menu structure of the site plugin
     logger.info('Load %s' % SITE_NAME)
+    xbmcgui.Window(10000).clearProperty('xstream.burningseries.lastSearchText')
     params = ParameterHandler()
     params.setParam('sUrl', URL_NEW_SERIES)
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30514), SITE_IDENTIFIER, 'showNewSeries'), params)  # New Series
@@ -61,12 +66,10 @@ def load(): # Menu structure of the site plugin
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30516), SITE_IDENTIFIER, 'showNewEpisodes'), params)  # New Episodes
     # params.setParam('sUrl', URL_POPULAR)
     # cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30519), SITE_IDENTIFIER, 'showEntries'), params)  # Popular Series
-    params.setParam('sUrl', URL_SERIES)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30518), SITE_IDENTIFIER, 'showAllSeries'), params)# All Series
-    params.setParam('sUrl', URL_ALPHABET)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30517), SITE_IDENTIFIER, 'showValue'), params)    # From A-Z
     params.setParam('sUrl', URL_GENRES)
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30506), SITE_IDENTIFIER, 'showValue'), params)    # Genre
+    params.setParam('sUrl', URL_ALPHABET)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30517), SITE_IDENTIFIER, 'showValue'), params)    # From A-Z
     params.setParam('sUrl', URL_SERIES)
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Search
     cGui().setEndOfDirectory()
@@ -76,8 +79,6 @@ def showValue():
     sUrl = params.getValue('sUrl')
 
     oRequest = cRequestHandler(sUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24 # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
 
     pattern = r'<div class="genre">\s*<span><strong>([^<]+)</strong></span>'
@@ -98,8 +99,6 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False):
     if not entryUrl: entryUrl = params.getValue('sUrl')
     sGenre = params.getValue('sGenre')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24 # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
 
     genre_div_pattern = rf'<div class="genre">\s*<span><strong>{sGenre}</strong></span>\s*<ul>(.*?)</ul>'
@@ -134,8 +133,6 @@ def showAllSeries(entryUrl=False, sGui=False, sSearchText=False):
     params = ParameterHandler()
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24 # HTML Cache Zeit 1 Tag
     sHtmlContent = oRequest.request()
 
     #logger.info('BurningSeries: showAllSeries: entryUrl request done: %s, sSearchText: %s' % (entryUrl, sSearchText))
@@ -212,8 +209,6 @@ def showNewSeries(entryUrl=False, sGui=False):
     if not entryUrl:
         entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     sHtmlContent = oRequest.request()
 
     pattern = r'<section[^>]*id="newest_series"[^>]*>.*?<ul[^>]*>(.*?)</ul>.*?</section>'
@@ -246,6 +241,7 @@ def showSeasons():
     params = ParameterHandler()
     sUrl = params.getValue('sUrl')
     sTVShowTitle = params.getValue('TVShowTitle')
+    sTmdbID = params.getValue('tmdbID') or ''
     oRequest = cRequestHandler(sUrl)
     sHtmlContent = oRequest.request()
     pattern = r'<li class="s(\d+)(?:\s+active)?"><a href="([^"]+)">([^<]+)</a></li>'
@@ -259,10 +255,16 @@ def showSeasons():
     if isThumbnail and sThumbnail.startswith('/'):
         sThumbnail = URL_MAIN + sThumbnail
 
+    # Aki: Year aus Produktionsjahre-Feld der Detail-Seite extrahieren
+    sYear = ''
+    year_match = re.search(r'<span>Produktionsjahre</span>\s*<p>\s*<em>(\d{4})', sHtmlContent)
+    if year_match:
+        sYear = year_match.group(1)
+
     total = len(aResult)
     for sNr, sUrl, sName in aResult:
         isMovie = sNr.startswith('0')
-        oGuiElement = cGuiElement('Staffel ' + sName, SITE_IDENTIFIER, 'showEpisodes')
+        oGuiElement = cGuiElement(cConfig().getLocalizedString(30512) + ' ' + sName, SITE_IDENTIFIER, 'showEpisodes')
         oGuiElement.setMediaType('season')
         if isThumbnail:
             oGuiElement.setThumbnail(sThumbnail)
@@ -271,7 +273,12 @@ def showSeasons():
         if not isMovie:
             oGuiElement.setTVShowTitle(sTVShowTitle)
             oGuiElement.setSeason(sNr)
+            if sTmdbID:
+                oGuiElement.addItemValue('tmdb_id', sTmdbID)
             params.setParam('sSeason', sNr)
+        if sYear:
+            oGuiElement.addItemValue('year', sYear)
+            params.setParam('sYear', sYear)
         params.setParam('sThumbnail', sThumbnail)
         params.setParam('sUrl', URL_MAIN + '/' + sUrl)
         cGui().addFolder(oGuiElement, params, True, total)
@@ -290,8 +297,6 @@ def showEpisodes():
         sSeason = '1'
     isMovieList = sUrl.endswith('filme')
     oRequest = cRequestHandler(sUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 24  # HTML Cache Zeit 24 Stunden
     sHtmlContent = oRequest.request()
     pattern = r'<tr[^>]*>\s*<td><a href="([^"]+)" title="([^"]+)">(\d+)</a></td>\s*<td>.*?<a href="([^"]+)" title="([^"]+)">.*?</td>\s*<td>(.*?)</td>\s*</tr>'
     isMatch, sEpisodes = cParser.parse(sHtmlContent, pattern)
@@ -361,7 +366,7 @@ def showHosters():
 
 
 def getHosterUrl(hUrl):
-    if type(hUrl) == str: hUrl = eval(hUrl)
+    if type(hUrl) == str: hUrl = ast.literal_eval(hUrl)
 
     Request = cRequestHandler(URL_MAIN + '/' + hUrl[0], caching=False)
     Request.addHeaderEntry('Referer', ParameterHandler().getValue('entryUrl'))
@@ -374,9 +379,11 @@ def getHosterUrl(hUrl):
 
     sUrl = Request.getRealUrl()
 
+    infoDialog(cConfig().getLocalizedString(30825), icon='INFO', time=10000)
     google_captcha_token = solve_recaptcha(sitekey, sUrl)
     if not google_captcha_token:
         logger.error('BurningSeries: getHosterUrl: Failed to solve captcha.')
+        infoDialog(cConfig().getLocalizedString(30826), icon='ERROR', time=10000)
         return [{'streamUrl': '', 'resolved': False}]
 
     lIDMatch, lID = cParser.parseSingleResult(htmlContent, r'data-lid="([^"]+)"')
@@ -412,15 +419,8 @@ def getHosterUrl(hUrl):
         'accept-language': 'de-DE,de;q=0.9',
         'content-type': 'application/x-www-form-urlencoded; charset=UTF-8',
         'origin': URL_MAIN,
-        'priority': 'u=1, i',
         'referer': sUrl,
-        'sec-ch-ua': '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-        'sec-ch-ua-mobile': '?0',
-        'sec-ch-ua-platform': '"macOS"',
-        'sec-fetch-dest': 'empty',
-        'sec-fetch-mode': 'cors',
-        'sec-fetch-site': 'same-origin',
-        'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36',
+        'user-agent': cRequestHandler.RandomUA(),
         'x-requested-with': 'XMLHttpRequest'
     }
 
@@ -455,8 +455,12 @@ def getHosterUrl(hUrl):
 
 
 def showSearch():
-    sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
-    if not sSearchText: return
+    win = xbmcgui.Window(10000)
+    sSearchText = win.getProperty('xstream.burningseries.lastSearchText')
+    if not sSearchText:
+        sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
+        if not sSearchText: return
+        win.setProperty('xstream.burningseries.lastSearchText', sSearchText)
     _search(False, sSearchText)
     cGui().setEndOfDirectory()
 

@@ -209,6 +209,8 @@ def install_widevine(reinstall=False, license_failed=False):
     log.info('Widevine - System: {} | Arch: {}'.format(system, arch))
 
     if system == 'WebOS':
+        if KODI_VERSION < 22:
+            raise InputStreamError(_.IA_WEBOS_ERROR)
         # WV L3 support for WebOS added in 22.2.7
         req_version = '22.2.7'
     else:

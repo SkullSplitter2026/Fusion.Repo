@@ -17,8 +17,6 @@ ON_ERROR = 'on_error'
 ON_EXCEPTION = 'on_exception'
 ON_PLUGIN_EXCEPTION = 'on_plugin_exception'
 ON_CLOSE = 'on_close'
-ON_DONOR_SET = 'on_donor_set'
-ON_DONOR_UNSET = 'on_donor_unset'
 ON_EXIT = 'on_exit'
 
 

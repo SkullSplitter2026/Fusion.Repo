@@ -1,0 +1,220 @@
+# Kodi Media Center language file
+# Addon Name: sKulls DB Backup
+# Addon id: plugin.program.sKullsDBbackup
+# Addon Provider: sKulls inc.
+msgid ""
+msgstr ""
+"Project-Id-Version: XBMC Addons\n"
+"Report-Msgid-Bugs-To: translations@kodi.tv\n"
+"Language: de_de\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgctxt "#32001"
+msgid "Create backup"
+msgstr "Backup erstellen"
+
+msgctxt "#32002"
+msgid "Restore backup"
+msgstr "Backup wiederherstellen"
+
+msgctxt "#32003"
+msgid "Auto backup"
+msgstr "Auto Backup"
+
+msgctxt "#32004"
+msgid "Settings"
+msgstr "Einstellungen"
+
+msgctxt "#32005"
+msgid "Status: {}"
+msgstr "Status: {}"
+
+msgctxt "#32006"
+msgid "Enabled"
+msgstr "Aktiviert"
+
+msgctxt "#32007"
+msgid "Disabled"
+msgstr "Deaktiviert"
+
+msgctxt "#32008"
+msgid "Interval: {} hours"
+msgstr "Intervall: {} Stunden"
+
+msgctxt "#32009"
+msgid "Back to main menu"
+msgstr "Zurück zum Hauptmenü"
+
+msgctxt "#32010"
+msgid "Auto-backup {}"
+msgstr "Auto-Backup {}"
+
+msgctxt "#32011"
+msgid "enabled"
+msgstr "aktiviert"
+
+msgctxt "#32012"
+msgid "disabled"
+msgstr "deaktiviert"
+
+msgctxt "#32013"
+msgid "Select backup interval"
+msgstr "Backup-Intervall wählen"
+
+msgctxt "#32014"
+msgid "Interval: {}"
+msgstr "Intervall: {}"
+
+msgctxt "#32015"
+msgid "No backups available."
+msgstr "Keine Backups vorhanden."
+
+msgctxt "#32017"
+msgid "Delete backup"
+msgstr "Backup löschen"
+
+msgctxt "#32018"
+msgid "Backup already exists"
+msgstr "Backup existiert bereits"
+
+msgctxt "#32019"
+msgid "Backup created: {}"
+msgstr "Backup erstellt: {}"
+
+msgctxt "#32020"
+msgid "Backup failed"
+msgstr "Backup fehlgeschlagen"
+
+msgctxt "#32021"
+msgid "Backup canceled"
+msgstr "Backup abgebrochen"
+
+msgctxt "#32022"
+msgid "Creating backup..."
+msgstr "Erstelle Backup..."
+
+msgctxt "#32023"
+msgid "Backing up: {}"
+msgstr "Sichere: {}"
+
+msgctxt "#32024"
+msgid "No files found to back up"
+msgstr "Keine Dateien zum Sichern gefunden"
+
+msgctxt "#32025"
+msgid "Backup file not found"
+msgstr "Backup-Datei nicht gefunden"
+
+msgctxt "#32026"
+msgid "Restoring backup..."
+msgstr "Stelle Backup wieder her..."
+
+msgctxt "#32027"
+msgid "{} files restored"
+msgstr "{} Dateien wiederhergestellt"
+
+msgctxt "#32028"
+msgid "Restore failed"
+msgstr "Wiederherstellung fehlgeschlagen"
+
+msgctxt "#32029"
+msgid "Restart required"
+msgstr "Neustart erforderlich"
+
+msgctxt "#32030"
+msgid "Kodi needs to be restarted."
+msgstr "Kodi muss neu gestartet werden."
+
+msgctxt "#32031"
+msgid "Restart now?"
+msgstr "Jetzt neu starten?"
+
+msgctxt "#32032"
+msgid "Do you really want to restore this backup?"
+msgstr "Möchtest du dieses Backup wirklich wiederherstellen?"
+
+msgctxt "#32033"
+msgid "All current data will be overwritten!"
+msgstr "Alle aktuellen Daten werden überschrieben!"
+
+msgctxt "#32034"
+msgid "Do you really want to delete backup \"{}\"?"
+msgstr "Backup \"{}\" wirklich löschen?"
+
+msgctxt "#32035"
+msgid "Backup deleted"
+msgstr "Backup gelöscht"
+
+msgctxt "#32036"
+msgid "Error deleting backup"
+msgstr "Fehler beim Löschen"
+
+msgctxt "#32037"
+msgid "{} hours"
+msgstr "{} Stunden"
+
+msgctxt "#32038"
+msgid "{} hour"
+msgstr "{} Stunde"
+
+msgctxt "#32039"
+msgid "1 week"
+msgstr "1 Woche"
+
+msgctxt "#32050"
+msgid "Creates a new backup of all Kodi databases and settings."
+msgstr "Erstellt eine neue Sicherung aller Kodi-Datenbanken und Einstellungen."
+
+msgctxt "#32051"
+msgid "Shows all available backups for restoring."
+msgstr "Zeigt alle vorhandenen Backups zur Wiederherstellung an."
+
+msgctxt "#32052"
+msgid "Manages the automatic backup feature."
+msgstr "Verwaltet die automatische Backup-Funktion."
+
+msgctxt "#32053"
+msgid "Opens the addon settings."
+msgstr "Öffnet die Addon-Einstellungen."
+
+msgctxt "#32054"
+msgid "Enables or disables automatic backup."
+msgstr "Aktiviert oder deaktiviert die automatische Sicherung."
+
+msgctxt "#32055"
+msgid "Sets the interval for automatic backups."
+msgstr "Legt fest, in welchem Zeitabstand automatisch gesichert wird."
+
+msgctxt "#32056"
+msgid "Returns to the main menu."
+msgstr "Kehrt zum Hauptmenü zurück."
+
+msgctxt "#32301"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "#32310"
+msgid "Backup"
+msgstr "Sicherung"
+
+msgctxt "#32311"
+msgid "Backup folder"
+msgstr "Backup-Ordner"
+
+msgctxt "#32312"
+msgid "Maximum number of backups"
+msgstr "Maximale Anzahl an Backups"
+
+msgctxt "#32320"
+msgid "Automatic backup"
+msgstr "Automatische Sicherung"
+
+msgctxt "#32321"
+msgid "Enable automatic backup"
+msgstr "Automatische Sicherung aktivieren"
+
+msgctxt "#32322"
+msgid "Backup interval (hours)"
+msgstr "Backup-Intervall (Stunden)"

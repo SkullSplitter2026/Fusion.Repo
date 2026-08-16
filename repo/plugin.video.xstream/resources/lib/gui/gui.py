@@ -1,6 +1,8 @@
+
 # -*- coding: utf-8 -*-
 # Python 3
 
+import os
 import sys
 import xbmc
 import xbmcgui 
@@ -10,7 +12,7 @@ from resources.lib import utils
 from resources.lib.config import cConfig
 from resources.lib.gui.contextElement import cContextElement
 from resources.lib.gui.guiElement import cGuiElement
-from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.handler.parameterHandler import ParameterHandler
 from urllib.parse import quote_plus, urlencode
 
 
@@ -97,35 +99,53 @@ class cGui:
         if infoString:
             infoString = '[I]%s[/I]' % infoString
         itemValues['title'] = itemTitle + infoString
-        try:
-            if not 'plot' in str(itemValues) or itemValues['plot'] == '':
-                itemValues['plot'] = ' ' #kasi Alt 255
-        except:
-            pass
+        if 'plot' not in itemValues or itemValues['plot'] == '':
+            itemValues['plot'] = ' ' #kasi Alt 255
         #listitem = xbmcgui.ListItem(itemTitle + infoString, oGuiElement.getIcon(), oGuiElement.getThumbnail())
         listitem = xbmcgui.ListItem(itemTitle + infoString)
-        # Function: setInfo(type, infoLabels)
-        # listitem.setInfo('video', { 'genre': 'Comedy' })
-        listitem.setInfo(oGuiElement.getType(), itemValues)
-        #Wenn Kodi 19, dann ignoriere setinfotagvideo
-        kodi_version = xbmc.getInfoLabel('System.BuildVersion')
-        if kodi_version[:2]  > '19':
-            self.setInfoTagVideo(oGuiElement, listitem)
+        self.setInfoTagVideo(oGuiElement, listitem)
 
-        listitem.setProperty('fanart_image', oGuiElement.getFanart())
-        listitem.setArt({'icon': oGuiElement.getIcon(), 'thumb': oGuiElement.getThumbnail(), 'poster': oGuiElement.getThumbnail(), 'fanart': oGuiElement.getFanart()})
+        # Site-Logo als Default: nackte Menue-Eintraege (kein eigenes Thumbnail, Icon
+        # noch DefaultFolder) bekommen das Logo der Site aus art/sites/<SITE_IDENTIFIER>.png
+        # statt des weissen Default-Ordners. Greift bewusst NICHT bei Items mit echtem
+        # Poster/Thumbnail oder bereits gesetztem Icon (z.B. ueber den trumb-Hook).
+        sIcon = oGuiElement.getIcon()
+        sThumb = oGuiElement.getThumbnail()
+        sSite = oGuiElement.getSiteName()
+        if sSite and not sThumb and sIcon == cGuiElement.DEFAULT_FOLDER_ICON:
+            sSiteLogo = os.path.join(cConfig().getAddonInfo('path'), 'resources', 'art', 'sites', '%s.png' % sSite)
+            if os.path.exists(sSiteLogo):
+                sIcon = sSiteLogo
+                sThumb = sSiteLogo
+        listitem.setArt({'icon': sIcon, 'thumb': sThumb, 'poster': sThumb, 'fanart': oGuiElement.getFanart()})
         aProperties = oGuiElement.getItemProperties()
         if len(aProperties) > 0:
             for sPropertyKey in aProperties.keys():
                 listitem.setProperty(sPropertyKey, aProperties[sPropertyKey])
         return listitem
 
+    @staticmethod
+    def _resolveVideoMediaType(oGuiElement, itemValues):
+        """Korrekter Kodi-Medientyp fuer setMediaType.
+        Die Basis uebergab getType() (sType, z.B. 'video') und vertaggt damit
+        Filme/Serien falsch, da setType('movie') nie gerufen wird — nur
+        setMediaType('movie'). Reihenfolge: echtes _mediaType, dann
+        itemValues['mediaType']; sonst Rueckfall auf getType() (altes Verhalten),
+        damit Nicht-Video-Eintraege wie Menue-/Ordnerpunkte unveraendert bleiben."""
+        media_type = (getattr(oGuiElement, '_mediaType', '') or '').lower()
+        if media_type in ('movie', 'tvshow', 'season', 'episode', 'musicvideo'):
+            return media_type
+        mv = itemValues.get('mediaType')
+        if mv:
+            return str(mv).lower()
+        return oGuiElement.getType()
+
     ### ÄNDERUNG ANFANG ###
     def setInfoTagVideo(self, oGuiElement, listitem):
         itemValues = oGuiElement.getItemValues()
         vtag = listitem.getVideoInfoTag()
         
-        vtag.setMediaType(oGuiElement.getType())
+        vtag.setMediaType(self._resolveVideoMediaType(oGuiElement, itemValues))
         
         # Titel ist bereits gesetzt und der Infostring geht hier verloren, wenn man den Titel erneut setzt
         #if 'title' in itemValues:
@@ -183,7 +203,9 @@ class cGui:
             except: pass
         if 'genre' in itemValues:
             try:
-                vtag.setGenres(itemValues['genres'].split(' / '))
+                sGenre = itemValues.get('genre') or itemValues.get('genres') or ''
+                if sGenre:
+                    vtag.setGenres(sGenre.split(' / '))
             except: pass
         if 'imdb_id' in itemValues:
             try:
@@ -227,25 +249,57 @@ class cGui:
                 contextmenus += [(contextitem.getTitle(), "RunPlugin(%s)" % (sTest,),)]
         itemValues = oGuiElement.getItemValues()
         contextitem = cContextElement()
+        # 1. Trailer
+        if oGuiElement._mediaType in ('movie', 'tvshow', 'season'):
+            contextitem.setTitle(cConfig().getLocalizedString(30027))  # Trailer Funktion
+            # Season: use show title (TVShowTitle), mediatype 'tvshow', pass season number
+            if oGuiElement._mediaType == 'season':
+                _trailerTitle = itemValues.get('TVShowTitle', '') or oGuiElement.getTitle()
+                _trailerMediatype = 'tvshow'
+            elif oGuiElement._mediaType == 'movie':
+                # Aki: Clean-Title-Fallback fuer Sites mit verseuchtem Display-Label
+                # (z.B. aniworld/serienstream Movie-Episoden mit Episode-Prefix).
+                # Sites koennen addItemValue('originaltitle', cleanTitle) setzen.
+                _trailerTitle = itemValues.get('originaltitle', '') or oGuiElement.getTitle()
+                _trailerMediatype = 'movie'
+            else:
+                _trailerTitle = oGuiElement.getTitle()
+                _trailerMediatype = oGuiElement._mediaType
+            trailerParams = {
+                'function': 'playTrailer',
+                'title': _trailerTitle,
+                'year': oGuiElement._sYear or str(itemValues.get('year', '')),
+                'mediatype': _trailerMediatype,
+                'poster': oGuiElement.getThumbnail(),
+            }
+            if 'tmdb_id' in itemValues and itemValues['tmdb_id']:
+                trailerParams['tmdb_id'] = str(itemValues['tmdb_id'])
+            if 'season' in itemValues and itemValues['season']:
+                trailerParams['season'] = str(itemValues['season'])
+            trailerUrl = "%s?%s" % (self.pluginPath, urlencode(trailerParams))
+            contextmenus += [(contextitem.getTitle(), "RunPlugin(%s)" % trailerUrl)]
+            # Trailer-URL als ListItem-Property setzen damit Skins
+            # den Trailer auch in Widgets anzeigen koennen
+            listitem.setProperty('trailer', trailerUrl)
+        # 2. TMDB Info
         if oGuiElement._mediaType == 'movie' or oGuiElement._mediaType == 'tvshow':
-            if cConfig().getSetting('xstream.trailer') == 'true':
-                if not xbmc.getCondVisibility('System.HasAddon(%s)' % 'script.module.xstream.trailer'):  # Schauen ob Addon installiert
-                    xbmc.executebuiltin('InstallAddon(%s)' % 'script.module.xstream.trailer')  # Addon installieren
-                contextitem.setTitle(cConfig().getLocalizedString(30027))  # Trailer Funktion
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(plugin://script.module.xstream.trailer/?action=play&name=%s&url=&language=)" % (itemValues['title'],),)]
-        if oGuiElement._mediaType == 'movie' or oGuiElement._mediaType == 'tvshow':
-            contextitem.setTitle(cConfig().getLocalizedString(30239))   # Erweiterte Info
+            contextitem.setTitle(cConfig().getLocalizedString(30239))   # TMDB Info
             searchParams = {'searchTitle': oGuiElement.getTitle(), 'sMeta': oGuiElement._mediaType, 'sYear': oGuiElement._sYear}
             contextmenus += [(contextitem.getTitle(), "RunPlugin(%s?function=viewInfo&%s)" % (self.pluginPath, urlencode(searchParams),),)]
-        if oGuiElement._mediaType == 'season' or oGuiElement._mediaType == 'episode':
-            contextitem.setTitle(cConfig().getLocalizedString(30241))   # Info
-            contextmenus += [(contextitem.getTitle(), cConfig().getLocalizedString(30242),)]    # Action(Info)
-        # search for alternative source
+        # 3. Hoster wählen
+        if not bIsFolder and cConfig().getSetting('hosterSelect') == 'Auto':
+            contextitem.setTitle(cConfig().getLocalizedString(30149))   # select Hoster
+            contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=play&manual=1)" % (sUrl,),)]
+        # 4. Weitere Quellen
         contextitem.setTitle(cConfig().getLocalizedString(30243))   # Weitere Quellen
         searchParams = {'searchTitle': oGuiElement.getTitle()}
         if 'imdb_id' in itemValues:
             searchParams['searchImdbID'] = itemValues['imdb_id']
         contextmenus += [(contextitem.getTitle(), "Container.Update(%s?function=searchAlter&%s)" % (self.pluginPath, urlencode(searchParams),),)]
+        # 5. Rest
+        if oGuiElement._mediaType == 'season' or oGuiElement._mediaType == 'episode':
+            contextitem.setTitle(cConfig().getLocalizedString(30241))   # Info
+            contextmenus += [(contextitem.getTitle(), cConfig().getLocalizedString(30242),)]    # Action(Info)
         if 'imdb_id' in itemValues and 'title' in itemValues:
             metaParams = {}
             if itemValues['title']:
@@ -262,33 +316,14 @@ class cGui:
             if 'episode' in itemValues and itemValues['episode'] and int(itemValues['episode']) > 0 and 'season' in itemValues and itemValues['season'] and int(itemValues['season']):
                 metaParams['episode'] = itemValues['episode']
                 metaParams['mediaType'] = 'episode'
-
-        # context options for movies or episodes
         if not bIsFolder:
             contextitem.setTitle(cConfig().getLocalizedString(30244))   # Playlist hinzufügen
             contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=enqueue)" % (sUrl,),)]
-            contextitem.setTitle(cConfig().getLocalizedString(30245))   # Download
-            contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=download)" % (sUrl,),)]
-            if cConfig().getSetting('jd_enabled') == 'true':
-                contextitem.setTitle(cConfig().getLocalizedString(30246))   # send JD
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=jd)" % (sUrl,),)]
-            if cConfig().getSetting('jd2_enabled') == 'true':
-                contextitem.setTitle(cConfig().getLocalizedString(30247))   # Send JD2
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=jd2)" % (sUrl,),)]
-            if cConfig().getSetting('myjd_enabled') == 'true':
-                contextitem.setTitle(cConfig().getLocalizedString(30248))   # Send myjd
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=myjd)" % (sUrl,),)]
-            if cConfig().getSetting('pyload_enabled') == 'true':
-                contextitem.setTitle(cConfig().getLocalizedString(30249))   # Send Pyload
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=pyload)" % (sUrl,),)]
-            if cConfig().getSetting('hosterSelect') == 'Auto':
-                contextitem.setTitle(cConfig().getLocalizedString(30149))   # select Hoster
-                contextmenus += [(contextitem.getTitle(), "RunPlugin(%s&playMode=play&manual=1)" % (sUrl,),)]
         listitem.addContextMenuItems(contextmenus)
         # listitem.addContextMenuItems(contextmenus, True)
         return listitem
 
-    def setEndOfDirectory(self, success=True):
+    def setEndOfDirectory(self, success=True, pUpdateListing=False, pCacheToDisc=True):
         # mark the listing as completed, this is mandatory
         if not self._isViewSet:
             self.setView('files')
@@ -301,7 +336,7 @@ class cGui:
         xbmcplugin.addSortMethod(self.pluginHandle, xbmcplugin.SORT_METHOD_PROGRAM_COUNT)
         xbmcplugin.addSortMethod(self.pluginHandle, xbmcplugin.SORT_METHOD_VIDEO_RUNTIME)
         xbmcplugin.addSortMethod(self.pluginHandle, xbmcplugin.SORT_METHOD_GENRE)
-        xbmcplugin.endOfDirectory(self.pluginHandle, success)
+        xbmcplugin.endOfDirectory(self.pluginHandle, succeeded=success, updateListing=pUpdateListing, cacheToDisc=pCacheToDisc)
 
     def setView(self, content='movies'):
         # set the listing to a certain content, makes special views available
@@ -348,6 +383,11 @@ class cGui:
                 params.setParam('mediaType', 'season')
             if 'episode' in itemValues and itemValues['episode'] and float(itemValues['episode']) > 0:
                 params.setParam('mediaType', 'episode')
+            # Pass imdb_id and year for Trakt.TV scrobbling
+            if 'imdb_id' in itemValues and itemValues['imdb_id']:
+                params.setParam('imdb_id', itemValues['imdb_id'])
+            if 'year' in itemValues and itemValues['year']:
+                params.setParam('year', itemValues['year'])
         sParams = params.getParameterAsUri()
         try:
             if params.getValue('sUrl').startswith("plugin://"):
@@ -410,9 +450,5 @@ class cGui:
         xbmc.executebuiltin("Notification(%s,%s,%s,%s)" % (str(sTitle), (str(sDescription)), iSeconds, cConfig().getAddonInfo('icon')))
 
     @staticmethod
-    def showLanguage(sTitle='xStream', sDescription=cConfig().getLocalizedString(30403), iSeconds=0):
-        if iSeconds == 0:
-            iSeconds = 1000
-        else:
-            iSeconds = iSeconds * 1000
-        xbmc.executebuiltin("Notification(%s,%s,%s,%s)" % (str(sTitle), (str(sDescription)), iSeconds, cConfig().getAddonInfo('icon')))
+    def showLanguage():
+        xbmcgui.Dialog().ok('xStream', cConfig().getLocalizedString(30823))

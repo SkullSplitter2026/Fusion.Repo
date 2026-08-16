@@ -77,7 +77,7 @@ class Setting(object):
 
     def __init__(self, id, label=None, owner=ADDON_ID, default=USE_DEFAULT, visible=True, enable=True, disabled_value=USE_DEFAULT, disabled_reason=None, 
                  override=True, before_save=lambda _: True, default_label=None, inherit=None, category=None, value_str='{value}',
-                 confirm_clear=False, after_clear=lambda: True, legacy_ids=None, after_save=lambda _: True, description=None, private_value=False, order=None, parent=None, image=None):
+                 confirm_clear=False, bulk_clear=True, after_clear=lambda: True, legacy_ids=None, after_save=lambda _: True, description=None, private_value=False, order=None, parent=None, image=None):
         self._id = str(id)
         self._label = label
         self._owner = owner
@@ -98,6 +98,7 @@ class Setting(object):
         self._private_value = private_value
         self._parent = parent
         self.confirm_clear = confirm_clear
+        self.bulk_clear = bulk_clear
         self._after_clear = after_clear
         self._legacy_ids = legacy_ids or []
         self._description = description
@@ -180,7 +181,7 @@ class Setting(object):
         return True
 
     def can_bulk_clear(self):
-        return self.can_clear() and not self.confirm_clear
+        return not self.confirm_clear and self.bulk_clear and self.can_clear()
 
     def store_value(self, value):
         STORAGE.set(self.owner, self.id, value)
@@ -345,6 +346,7 @@ class Browse(Text):
         self._source = kwargs.pop('source', '')
         self._allow_create = kwargs.pop('allow_create', True)
         self._use_default = kwargs.pop('use_default', True)
+        kwargs.setdefault('bulk_clear', False)
         super(Browse, self).__init__(*args, **kwargs)
 
     def select(self):

@@ -6,9 +6,8 @@ import xbmcgui
 import hashlib
 import re
 import os
-import time, pyaes
+import pyaes
 
-from resources.lib.handler.ParameterHandler import ParameterHandler
 from xbmcvfs import translatePath
 from resources.lib.config import cConfig
 from urllib.parse import quote, unquote, quote_plus, unquote_plus, urlparse
@@ -51,27 +50,20 @@ def platform():
 def changelog():
     CHANGELOG_PATH = translatePath(os.path.join('special://home/addons/' + cConfig().getAddonInfo('id') + '/', 'changelog.txt'))
     version = cConfig().getAddonInfo('version')
-    if cConfig().getSetting('changelog_version') == version or not os.path.isfile(CHANGELOG_PATH):
+    if cConfig().getSetting('changelog_version') == version:
+        return
+    # If changelog.txt doesn't exist, just skip silently
+    if not os.path.isfile(CHANGELOG_PATH):
+        cConfig().setSetting('changelog_version', version)
         return
     cConfig().setSetting('changelog_version', version)
-    heading = cConfig().getLocalizedString(30275)
     with open(CHANGELOG_PATH, mode='r', encoding='utf-8') as f:
-        cl_lines = f.readlines()
-    announce = ''
-    for line in cl_lines:
-        announce += line
-    textBox(heading, announce)
-
-
-# zeigt die Entwickler Optionen Warnung als Popup an
-def devWarning():
-    POPUP_PATH = translatePath(os.path.join('special://home/addons/' + cConfig().getAddonInfo('id') + '/resources/popup', 'devWarning.txt'))
-    heading = cConfig().getLocalizedString(30322)
-    with open(POPUP_PATH, mode='r', encoding='utf-8') as f:
-        cl_lines = f.readlines()
-    announce = ''
-    for line in cl_lines:
-        announce += line
+        announce = f.read()
+    # If changelog.txt is empty, show a notification instead of a textbox
+    if not announce.strip():
+        infoDialog(cConfig().getLocalizedString(30821), icon='INFO')
+        return
+    heading = cConfig().getLocalizedString(30275)
     textBox(heading, announce)
 
 
@@ -234,43 +226,6 @@ class cParser:
         return base64.b64decode(text).decode('utf-8')
 
 
-# xStream interner Log
-class logger:
-    @staticmethod
-    def info(sInfo):
-        logger.__writeLog(sInfo, cLogLevel=xbmc.LOGINFO)
-
-    @staticmethod
-    def debug(sInfo):
-        logger.__writeLog(sInfo, cLogLevel=xbmc.LOGDEBUG)
-
-    @staticmethod
-    def warning(sInfo):
-        logger.__writeLog(sInfo, cLogLevel=xbmc.LOGWARNING)
-
-    @staticmethod
-    def error(sInfo):
-        logger.__writeLog(sInfo, cLogLevel=xbmc.LOGERROR)
-
-    @staticmethod
-    def fatal(sInfo):
-        logger.__writeLog(sInfo, cLogLevel=xbmc.LOGFATAL)
-
-    @staticmethod
-    def __writeLog(sLog, cLogLevel=xbmc.LOGDEBUG):
-        params = ParameterHandler()
-        try:
-            if params.exist('site'):
-                site = params.getValue('site')
-                sLog = "[%s] -> [%s]: %s" % (cConfig().getAddonInfo('name'), site, sLog)
-            else:
-                sLog = "[%s] %s" % (cConfig().getAddonInfo('name'), sLog)
-            xbmc.log(sLog, cLogLevel)
-        except Exception as e:
-            xbmc.log('Logging Failure: %s' % e, cLogLevel)
-            pass
-
-
 class cUtil:
     @staticmethod
     def removeHtmlTags(sValue, sReplace=''):
@@ -278,24 +233,20 @@ class cUtil:
 
     @staticmethod
     def unescape(text):
-        # edit kasi 2024-11-26 so für py2/py3 oder für nur py3 unichr ersetzen durch chr
-        try: unichr
-        except NameError: unichr = chr
-
         def fixup(m):
             text = m.group(0)
             if not text.endswith(';'): text += ';'
             if text[:2] == '&#':
                 try:
                     if text[:3] == '&#x':
-                        return unichr(int(text[3:-1], 16))
+                        return chr(int(text[3:-1], 16))
                     else:
-                        return unichr(int(text[2:-1]))
+                        return chr(int(text[2:-1]))
                 except ValueError:
                     pass
             else:
                 try:
-                    text = unichr(name2codepoint[text[1:-1]])
+                    text = chr(name2codepoint[text[1:-1]])
                 except KeyError:
                     pass
             return text
@@ -364,13 +315,6 @@ class cUtil:
         ]
         return (sum(best_ratios) / len(best_ratios)) >= threshold
 
-def valid_email(email): #ToDo: Funktion in Settings / Konten aktivieren
-    # Überprüfen der EMail-Adresse mit dem Muster
-    if re.compile(r'^[\w\.-]+@[\w\.-]+\.\w+$').match(email):
-        return True
-    else:
-        return False
-
 def getDNS(dns):
     status = 'Beschäftigt'
     loop = 1
@@ -398,32 +342,3 @@ def getRepofromAddonsDB(addonID):
     else:
         repo = ''
     return repo
-
-
-class cCache(object):
-    _win = None
-
-    def __init__(self):
-        # see https://kodi.wiki/view/Window_IDs
-        self._win = xbmcgui.Window(10000)
-
-    def __del__(self):
-        del self._win
-
-    def get(self, key, cache_time):
-        cachedata = self._win.getProperty(key)
-
-        if cachedata:
-            cachedata = eval(cachedata)
-            if time.time() - cachedata[0] < cache_time or cache_time < 0:
-                return cachedata[1]
-            else:
-                self._win.clearProperty(key)
-
-        return None
-    
-    def set(self, key, data):
-        self._win.setProperty(key, repr((time.time(), data)))
-
-    def clear(self):
-        self._win.clearProperties()

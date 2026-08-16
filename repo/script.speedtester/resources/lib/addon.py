@@ -573,7 +573,7 @@ class SpeedTest(Animation):
             self.img_progress.setVisible(True)
             img_progressx = int((self.screenx / 3) - (200 / 2))
             img_progressy = int((self.screeny / 3) - (50 / 2) + 270)
-            self.please_wait_textbox = ControlLabel(img_progressx, img_progressy, 200, 50, label='Please wait...',
+            self.please_wait_textbox = ControlLabel(img_progressx, img_progressy, 200, 50, label=localize(30952),
                                                     textColor='0xFFFFFFFF', alignment=2 | 4)
             self.addControl(self.please_wait_textbox)
         elif function == 'visible':

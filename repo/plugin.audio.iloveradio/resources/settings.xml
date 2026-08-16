@@ -1,6 +1,87 @@
 <settings>
-<category label="Settings">
-	<setting id="sort" type="bool" label="Sort" default="false"/>
-	<setting id="view-mode" type="number" label="View Mode" default="500"/>
-</category>
+
+    <!-- GENERAL -->
+    <category label="30050">
+
+        <setting
+            id="notify"
+            type="bool"
+            label="30051"
+            default="true" />
+
+        <setting
+            id="fanart"
+            type="bool"
+            label="30052"
+            default="true" />
+
+        <setting
+            id="show_settings"
+            type="bool"
+            label="30053"
+            default="true" />
+
+        <setting
+            id="stream_type"
+            type="select"
+            label="30054"
+            values="aac|mp3"
+            default="aac" />
+
+    </category>
+
+
+    <!-- AUTO REFRESH -->
+    <category label="30055">
+
+        <setting
+            id="auto_refresh"
+            type="bool"
+            label="30056"
+            default="true" />
+
+        <setting
+            id="refresh_interval"
+            type="number"
+            label="30057"
+            default="120" />
+
+    </category>
+
+
+    <!-- METADATA -->
+    <category label="30058">
+
+        <setting
+            id="live_metadata"
+            type="bool"
+            label="30059"
+            default="true" />
+
+        <setting
+            id="metadata_interval"
+            type="number"
+            label="30060"
+            default="15" />
+
+    </category>
+
+
+    <!-- M3U EXPORT -->
+    <category label="30061">
+
+        <setting
+            id="m3u_path"
+            type="folder"
+            label="30062"
+            default="special://profile/addon_data/plugin.audio.iloveradio/" />
+
+        <setting
+            id="export_m3u"
+            type="action"
+            label="30063"
+            action="RunPlugin(plugin://plugin.audio.iloveradio/?action=export_m3u)" />
+
+    </category>
+
 </settings>

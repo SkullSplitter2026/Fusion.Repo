@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon id="plugin.audio.mp3streams" name="MP3 Streams" version="2025.0.1" provider-name="Jon Bovi">
+<addon id="plugin.audio.mp3streams" name="MP3 Streams" version="2026.07.20" provider-name="Jon Bovi, [COLOR crimson]King Krimson[/COLOR]">
     <requires>
         <import addon="xbmc.python" version="3.0.0"/>
         <import addon="script.module.future"/>
@@ -10,15 +10,19 @@
     <extension point="xbmc.python.pluginsource" library="default.py">
         <provides>audio</provides>
     </extension>
-    <extension point="xbmc.service" library="playerMP3.py" start="startup" />
+    <extension point="xbmc.service" library="playerMP3.py" />
     <extension point="xbmc.addon.metadata">
         <platform>all</platform>
-        <summary>A music streaming Collection.</summary>
-        <description>MP3 Streams Kodi 19+</description>
-        <news>2025.0.1 - Fix Billboard Charts, 2022.0.2 - Fix errors loading pages. 2022.0.1 - Small fix, Kodi 20 ready. 2021.0.6 - Fixed issue with hanging  when skipping tracks. 2021.0.4 - Fixed Settings, 2021.0.3 - Bugfixes. Enjoy!</news>
+        <summary>A Music Streaming Collection</summary>
+        <description>MP3 Streams for Kodi 19+</description>
+        <news>2026.07.20 - Harden audio downloads: atomic .part handoff, validate status/size/magic bytes, skip failed album tracks, clear download lock on failure; keep-download cache uses album storage keys.
+2026.07.19 - Flat Artist - Album folders escape embedded separators so distinct albums no longer collide; legacy flat and album-only folders still resolve with ID3 checks.
+2026.07.18 - ID3 tag check prevents wrong artist when two albums share a title.
+2026.07.17 - Single-track album downloads from collab/soundtrack albums use the same album folder as full-album download.
+See the changelog. Enjoy!</news>
         <assets>
-            <icon>icon.png</icon>
-            <fanart>fanart.jpg</fanart>
+            <icon>art/icon.png</icon>
+            <fanart>art/fanart.jpg</fanart>
         </assets>
     </extension>
 </addon>

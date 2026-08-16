@@ -4,7 +4,7 @@
     <setting id="download_path"
              type="folder"
              label="Download folder"
-             default="special://home/addons/resource.images.skinbackgrounds"
+             default="special://profile/Wallpaper"
              allowempty="false" />
     <setting id="use_static_thumbs"
              type="bool"
@@ -22,11 +22,17 @@
              values="All|4K (3840x)|2K (2560x)|FullHD (1920x)|HD (1280x)"
              default="0" />
   </category>
+  <category label="Genres">
+    <setting id="ask_genre_on_download"
+             type="bool"
+             label="Ask genre when downloading"
+             default="true" />
+  </category>
   <category label="Custom Sources">
     <setting id="add_source_gui"
              type="action"
              label="Add New Source"
-             action="RunPlugin(plugin://plugin.program.sKullsWallpapers/?mode=add_custom_source)" />
+             action="RunPlugin(plugin://plugin.program.sKullsWallpapers?mode=add_custom_source)" />
     <setting id="manage_source_gui"
              type="action"
              label="Manage Sources"

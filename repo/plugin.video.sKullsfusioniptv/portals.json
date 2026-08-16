@@ -1,0 +1,124 @@
+{
+    "portals": [
+        {
+            "id": 1,
+            "name": "Alpha6-Tx.Me",
+            "server_address": "http://alpha6-tx.me:80/c/",
+            "mac_address": "00:1A:79:63:ed:5c",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        },
+        {
+            "id": 2,
+            "name": "Line.TvDsz.cc",
+            "server_address": "http://line.tvdsz.cc/c/",
+            "mac_address": "00:1A:79:75:37:4D",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 3,
+            "name": "Mag.Tivi-One-IPTV.Net",
+            "server_address": "http://mag.tivi-one-iptv.net/c/",
+            "mac_address": "00:1B:79:45:2B:A9",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 4,
+            "name": "XoXPl8k.Me",
+            "server_address": "http://xoxpl8k.me:80/c/",
+            "mac_address": "00:1A:79:1E:4F:CD",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 5,
+            "name": "GlobalGNet2.Live",
+            "server_address": "http://globalgnet2.live/c/",
+            "mac_address": "00:1A:79:32:C2:6A",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 6,
+            "name": "WeaselTV.Live",
+            "server_address": "http://weaseltv.live/c/",
+            "mac_address": "00:1A:79:69:99:80",
+            "serial_number": "",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 7,
+            "name": "Portal 7",
+            "server_address": "http://example2.com/c/",
+            "mac_address": "00:1A:79:YY:YY:YY",
+            "serial_number": "87654321",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 8,
+            "name": "Portal 8",
+            "server_address": "http://example2.com/c/",
+            "mac_address": "00:1A:79:YY:YY:YY",
+            "serial_number": "87654321",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 9,
+            "name": "Portal 9",
+            "server_address": "http://example2.com/c/",
+            "mac_address": "00:1A:79:YY:YY:YY",
+            "serial_number": "87654321",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+        {
+            "id": 10,
+            "name": "Portal 10",
+            "server_address": "http://example2.com/c/",
+            "mac_address": "00:1A:79:YY:YY:YY",
+            "serial_number": "87654321",
+            "device_id": "",
+            "device_id_2": "",
+            "signature": "",
+            "alternative_context_path": false,
+            "category_filter": ""
+        }
+    ]
+}

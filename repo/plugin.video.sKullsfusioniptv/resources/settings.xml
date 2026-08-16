@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<settings version="1">
+    <section id="plugin.video.svod">
+        <category id="general" label="32301" help="">
+            <group id="portal_url_group" label="32314">
+                <setting id="portal_list_url" type="string" label="32312" help="32313">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string" />
+                </setting>
+            </group>
+            <group id="filter_group" label="32301">
+                <setting id="category_filter" type="string" label="32302" help="">
+                    <level>0</level>
+                    <constraints>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="edit" format="string" />
+                </setting>
+            </group>
+            <group id="favorites_group" label="32309">
+                <setting id="global_fav_use_categories" type="boolean" label="32600">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle" />
+                </setting>
+                <setting id="global_fav_group_by_portal" type="boolean" label="32308">
+                    <level>0</level>
+                    <default>true</default>
+                    <control type="toggle" />
+                    <dependencies>
+                        <dependency type="enable">
+                            <and>
+                                <condition setting="global_fav_use_categories" operator="is">false</condition>
+                            </and>
+                        </dependency>
+                    </dependencies>
+                </setting>
+            </group>
+            <group id="preload_group" label="EPG Preload">
+                <setting id="epg_enabled" type="boolean" label="32307">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle" />
+                </setting>
+                <setting id="epg_preload_mode" type="string" label="32303" help="">
+                    <level>0</level>
+                    <default>0</default>
+                    <constraints>
+                        <options>
+                            <option label="32304">0</option>
+                            <option label="32305">1</option>
+                            <option label="32306">2</option>
+                        </options>
+                        <allowempty>False</allowempty>
+                    </constraints>
+                    <control type="spinner" format="string">
+                    <heading>32303</heading>
+                    </control>
+                </setting>
+                <setting id="epg_preload_pool_size" type="integer" label="32310" help="32311">
+                    <level>0</level>
+                    <default>8</default>
+                    <constraints>
+                        <minimum>4</minimum>
+                        <maximum>16</maximum>
+                        <step>1</step>
+                    </constraints>
+                    <control type="spinner" format="integer" />
+                </setting>
+            </group>
+        </category>
+    </section>
+</settings>

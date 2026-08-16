@@ -23,17 +23,26 @@
     AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
     CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
     DEALINGS IN THE SOFTWARE.
+    
+    ♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦ CHANGES ♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦
+    ADDED PULL_REQUEST: Allow get_next_data to be compatible with endpoints that have a list of commands
+    >>> from dmurph commented on Jul 15, 2025 - Line 338 to 351 and Line 361 to 373 <<<
+    ADDED PULL_REQUEST: Support lockupViewModel in scrapetube get_channel
+    >>> from annguyenkhac commented on May 11, 2026 - Line 376 to 579 <<<
+    ♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦♦
 '''
+# changed the User-Agent to Firefox - Line 290
+# changed the language to first 'german' and second 'english' - Line 291
 
 import json
 import time
-from typing import Generator, Literal
+from typing import Generator, Optional, Literal
 
 import requests
 #from .typing_extensions import Literal # Python =< 3,7
 
 type_property_map = {
-    "videos": "videoRenderer",
+    "videos": "lockupViewModel",
     "streams": "videoRenderer",
     "shorts": "reelWatchEndpoint"
 }
@@ -46,7 +55,7 @@ def get_channel(
     sleep: float = 1,
     proxies: dict = None,
     sort_by: Literal["newest", "oldest", "popular"] = "newest",
-    content_type: Literal["videos", "shorts", "streams", "playlist"] = "videos",
+    content_type: Literal["videos", "shorts", "streams", "playlists"] = "videos",
 ) -> Generator[dict, None, None]:
 
     """Get videos for a channel.
@@ -63,7 +72,7 @@ def get_channel(
 
         channel_username (``str``, *optional*):
             The username from the channel you want to get the videos for.
-            Ex. ``LinusTechTips`` (without the @).
+            Ex. ``LinusTechTips`` !!! (with the @) !!!
             If you prefer to use the channel url instead, see ``channel_url`` above.
 
         limit (``int``, *optional*):
@@ -96,7 +105,7 @@ def get_channel(
     elif channel_id:
         base_url = f"https://www.youtube.com/channel/{channel_id}"
     elif channel_username:
-        base_url = f"https://www.youtube.com/@{channel_username}"
+        base_url = f"https://www.youtube.com/{channel_username}"
 
     url = f"{base_url}/{content_type}?view=0&flow=grid"
 
@@ -220,9 +229,9 @@ def get_video(
     session.headers["X-YouTube-Client-Name"] = "1"
     session.headers["X-YouTube-Client-Version"] = client["clientVersion"]
     data = json.loads(
-        get_json_from_html(html, "var ytInitialData = ", 0, "};") + "}"
+        get_json_from_html(html, "var ytInitialPlayerResponse = ", 0, "};") + "}"
     )
-    return next(search_dict(data, "videoPrimaryInfoRenderer"))
+    return next(search_dict(data, "videoDetails"))
 
 
 
@@ -233,6 +242,7 @@ def get_videos(
     is_first = True
     quit_it = False
     count = 0
+    page_context = None
     while True:
         if is_first:
             html = get_initial_data(session, url)
@@ -245,6 +255,7 @@ def get_videos(
             data = json.loads(
                 get_json_from_html(html, "var ytInitialData = ", 0, "};") + "}"
             )
+            page_context = get_page_context(data)
             data = next(search_dict(data, selector_list), None)
             next_data = get_next_data(data, sort_by)
             is_first = False
@@ -253,7 +264,7 @@ def get_videos(
         else:
             data = get_ajax_data(session, api_endpoint, api_key, next_data, client)
             next_data = get_next_data(data)
-        for result in get_videos_items(data, selector_item):
+        for result in get_videos_items(data, selector_item, page_context):
             try:
                 count += 1
                 yield result
@@ -276,9 +287,7 @@ def get_session(proxies: dict = None) -> requests.Session:
     session = requests.Session()
     if proxies:
         session.proxies.update(proxies)
-    session.headers[
-        "User-Agent"
-    ] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:135.0) Gecko/20100101 Firefox/135.0' # changed the User-Agent to Firefox
+    session.headers["User-Agent"] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:150.0) Gecko/20100101 Firefox/150.0' # changed the User-Agent to Firefox
     session.headers["Accept-Language"] = 'de-DE,de;q=0.9,en;q=0.8' # changed the language to first 'german' and second 'english'
     return session
 
@@ -325,6 +334,22 @@ def get_next_data(data: dict, sort_by: str = None) -> dict:
         endpoint = next(search_dict(data, "continuationEndpoint"), None)
     if not endpoint:
         return None
+
+    # Sometimes, the returned endpoint has the continuation command in in the list at endpoint["commandExecutorCommand"]["commands"].
+    if "continuationCommand" not in endpoint: # from dmurph commented on Jul 15, 2025
+        # If that exists, iterate that looking for the continuation comand.
+        if "commandExecutorCommand" not in endpoint or "commands" not in endpoint["commandExecutorCommand"]:
+            raise Exception(f"Invalid endpoint: f{endpoint}");
+        found_continuation_endpoint = False
+        for command in endpoint["commandExecutorCommand"]["commands"]:
+            if "continuationCommand" not in command:
+                continue
+            endpoint = command
+            found_continuation_endpoint = True
+            break
+        if not found_continuation_endpoint:
+            raise Exception(f"Invalid endpoint, no command with a 'continuationCommand': f{endpoint}");
+
     next_data = {
         "token": endpoint["continuationCommand"]["token"],
         "click_params": {"clickTrackingParams": endpoint["clickTrackingParams"]},
@@ -333,7 +358,7 @@ def get_next_data(data: dict, sort_by: str = None) -> dict:
     return next_data
 
 
-def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
+def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]: # from dmurph commented on Jul 15, 2025
     stack = [partial]
     while stack:
         current_item = stack.pop(0)
@@ -348,5 +373,207 @@ def search_dict(partial: dict, search_key: str) -> Generator[dict, None, None]:
                 stack.append(value)
 
 
-def get_videos_items(data: dict, selector: str) -> Generator[dict, None, None]:
-    return search_dict(data, selector)
+def get_page_context(data: dict) -> Optional[dict]: # from annguyenkhac commented on May 11, 2026
+    metadata = next(search_dict(data, "channelMetadataRenderer"), None)
+    if not isinstance(metadata, dict):
+        return None
+
+    owner_url = None
+    owner_urls = metadata.get("ownerUrls")
+    if isinstance(owner_urls, list) and owner_urls:
+        owner_url = owner_urls[0]
+
+    canonical_base_url = None
+    if isinstance(owner_url, str) and owner_url.startswith("https://www.youtube.com"):
+        canonical_base_url = owner_url.replace("https://www.youtube.com", "", 1)
+
+    return {
+        "channel_id": metadata.get("externalId"),
+        "channel_title": metadata.get("title"),
+        "canonical_base_url": canonical_base_url,
+    }
+
+
+def _make_text_runs(text: str) -> dict:
+    if not text:
+        return {"runs": []}
+    return {"runs": [{"text": text}]}
+
+
+def _make_byline(channel_title: str, channel_id: str = None, canonical_base_url: str = None) -> dict:
+    if not channel_title:
+        return {"runs": []}
+
+    navigation_endpoint = {}
+    if channel_id:
+        navigation_endpoint = {
+            "commandMetadata": {
+                "webCommandMetadata": {
+                    "url": canonical_base_url or f"/channel/{channel_id}",
+                    "webPageType": "WEB_PAGE_TYPE_CHANNEL",
+                    "rootVe": 9662,
+                }
+            },
+            "browseEndpoint": {
+                "browseId": channel_id,
+            },
+        }
+        if canonical_base_url:
+            navigation_endpoint["browseEndpoint"]["canonicalBaseUrl"] = canonical_base_url
+
+    run = {"text": channel_title}
+    if navigation_endpoint:
+        run["navigationEndpoint"] = navigation_endpoint
+    return {"runs": [run]}
+
+
+def _lockup_metadata_parts(lockup: dict) -> list:
+    try:
+        rows = (
+            lockup.get("metadata", {})
+            .get("lockupMetadataViewModel", {})
+            .get("metadata", {})
+            .get("contentMetadataViewModel", {})
+            .get("metadataRows", [])
+        )
+        parts = []
+        for row in rows:
+            for part in row.get("metadataParts", []):
+                text = part.get("text", {}).get("content")
+                if text:
+                    parts.append(text)
+        return parts
+    except (TypeError, KeyError, AttributeError):
+        return []
+
+
+def _lockup_duration(lockup: dict) -> str:
+    try:
+        overlays = (
+            lockup.get("contentImage", {})
+            .get("thumbnailViewModel", {})
+            .get("overlays", [])
+        )
+        for overlay in overlays:
+            bottom_overlay = overlay.get("thumbnailBottomOverlayViewModel")
+            if not bottom_overlay:
+                continue
+            for badge in bottom_overlay.get("badges", []):
+                return badge.get("thumbnailBadgeViewModel", {}).get("text", None)
+    except (TypeError, KeyError, AttributeError):
+        pass
+    return None
+
+
+def _lockup_view_count(lockup: dict) -> str:
+    parts = _lockup_metadata_parts(lockup)
+    return parts[0] if parts else None
+
+
+def _lockup_published_time(lockup: dict) -> str:
+    parts = _lockup_metadata_parts(lockup)
+    return parts[1] if len(parts) > 1 else None
+
+
+def _lockup_thumbnail(lockup: dict) -> dict:
+    sources = (
+        lockup.get("contentImage", {})
+        .get("thumbnailViewModel", {})
+        .get("image", {})
+        .get("sources", [])
+    )
+    thumbnails = []
+    for source in sources:
+        if not isinstance(source, dict):
+            continue
+        url = source.get("url")
+        if not url:
+            continue
+        thumbnails.append(
+            {
+                "url": url,
+                "width": source.get("width"),
+                "height": source.get("height"),
+            }
+        )
+    return {"sources": thumbnails}
+
+
+def _lockup_navigation_endpoint(lockup: dict) -> dict:
+    return (
+        lockup.get("rendererContext", {})
+        .get("commandContext", {})
+        .get("onTap", {})
+        .get("innertubeCommand", {})
+    )
+
+
+def _lockup_to_video_renderer(lockup: dict, page_context: Optional[dict] = None) -> Optional[dict]:
+    if not isinstance(lockup, dict):
+        return None
+
+    content_type = lockup.get("contentType") or ""
+    if "VIDEO" not in content_type:
+        return None
+
+    content_id = lockup.get("contentId")
+    if not content_id:
+        return None
+
+    title_content = (
+        lockup.get("metadata", {})
+        .get("lockupMetadataViewModel", {})
+        .get("title", {})
+        .get("content")
+    )
+    title = _make_text_runs(title_content)
+
+    view_count = _lockup_view_count(lockup)
+    published_time = _lockup_published_time(lockup)
+    duration = _lockup_duration(lockup)
+    navigation_endpoint = _lockup_navigation_endpoint(lockup)
+
+    channel_title = None
+    channel_id = None
+    canonical_base_url = None
+    if page_context:
+        channel_title = page_context.get("channel_title")
+        channel_id = page_context.get("channel_id")
+        canonical_base_url = page_context.get("canonical_base_url")
+
+    byline = _make_byline(channel_title, channel_id, canonical_base_url)
+
+    video = {
+        "contentId": content_id,
+        "title": title,
+        "thumbnail": _lockup_thumbnail(lockup),
+    }
+    if navigation_endpoint:
+        video["navigationEndpoint"] = navigation_endpoint
+    video["viewCountText"] = {"simpleText": view_count} # Entweder Aufrufe im Format = 2200 Aufrufe oder wieviele Zuschauer warten = 28 warten
+    video["publishedTimeText"] = {"simpleText": published_time} # Entweder Datum im Format = vor 3 Tagen gestreamt oder = Geplant für: 01.06.26, 20:00
+    video["lengthText"] = {"simpleText": duration} # Entweder Laufzeit im Format = 1:12:45 oder = Anstehend oder = LIVE
+    video["ownerText"] = byline.get('runs', [])
+    return video
+
+
+def get_videos_items(data: dict, selector: str, page_context: Optional[dict] = None) -> Generator[dict, None, None]:
+    if selector != "videoRenderer":
+        yield from search_dict(data, selector)
+        return
+
+    seen = set()
+    for item in search_dict(data, "videoRenderer"):
+        video_id = item.get("videoId") if isinstance(item, dict) else None
+        if video_id and video_id not in seen:
+            seen.add(video_id)
+            yield item
+
+    for lockup in search_dict(data, "lockupViewModel"):
+        converted = _lockup_to_video_renderer(lockup, page_context)
+        if not converted:
+            continue
+        content_id = converted["contentId"]
+        if content_id not in seen:
+            seen.add(content_id)
+            yield converted

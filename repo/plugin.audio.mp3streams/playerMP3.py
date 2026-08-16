@@ -133,6 +133,7 @@ import xbmcvfs
 import urllib.request, urllib.parse, urllib.error
 
 import os
+import re
 import requests
 import shutil
 
@@ -151,7 +152,7 @@ ADDON      =  xbmcaddon.Addon(ADDONID)
 HOME       =  xbmcvfs.translatePath(ADDON.getAddonInfo('path'))
 PROFILE    =  xbmcvfs.translatePath(ADDON.getAddonInfo('profile'))
 PROFILE    =  ADDON.getAddonInfo('profile')
-ICON       =  os.path.join(HOME, 'icon.png')
+ICON       =  xbmcvfs.translatePath(ADDON.getAddonInfo('icon'))
 TEMP       =  xbmcvfs.translatePath(os.path.join(PROFILE, 'temp_dl'))
 
 MAX_DOWNLOADERS = 3
@@ -322,50 +323,28 @@ def createMD5(url):
 
 
 def clean(text):
-    text = text.replace('/',  '')
-    text = text.replace("\\", '')
-    text = text.replace(':',  '')
-    text = text.replace('*',  '')
-    text = text.replace('?',  '')
-    text = text.replace('"',  '')
-    text = text.replace('<',  '')
-    text = text.replace('>',  '')
-    text = text.replace('|',  '')
-
-    return text.strip()
+    import settings
+    return settings.sanitize_filename(text)
 
 
-def createFilename(title, artist, album, url):
+def createFilename(title, artist, album, url, storage_artist='', storage_album=''):
     if ADDON.getSetting('keep_downloads')=='false':
         return os.path.join(TEMP, createMD5(url))
 
-    title  = clean(title)
-    artist = clean(artist)
-    album  = clean(album)
-
-    customdir = ADDON.getSetting('custom_directory')
-    folder = ADDON.getSetting('music_dir')
-
-    if customdir=='false':
-        folder = TEMP
-
-    if ADDON.getSetting('folder_structure')=="0":
-        filename = os.path.join(folder, artist, album)
+    import settings
+    track = ''
+    title = clean(title)
+    match = re.match(r'^(\d+)\.\s+', title)
+    if match:
+        track = match.group(1)
+        songname = title[len(match.group(0)):]
     else:
-        filename = os.path.join(folder, artist + ' - ' + album)
- 
-    try:
-        xbmcvfs.mkdirs(filename)
-    except Exception as e:
-        log('Error creating folder %s - %s' % (filename, str(e)))
-
-    filename = os.path.join(filename, title + '.mp3')
-
-    return filename
+        songname = title
+    return settings.album_track_file_path(storage_artist or artist, storage_album or album, track, songname, create_dir=True)
 
 
 #called from default.py
-def getListItem(title, artist, album, track, image, duration, url, fanart, isPlayable, useDownload):
+def getListItem(title, artist, album, track, image, duration, url, fanart, isPlayable, useDownload, storage_artist='', storage_album=''):
 
     liz = xbmcgui.ListItem(title)
     
@@ -380,7 +359,7 @@ def getListItem(title, artist, album, track, image, duration, url, fanart, isPla
     if FRODO or '.mp3' in url or not useDownload:
         return url, liz
     title = "%s. %s" % (track,title)
-    filename = createFilename(title, artist, album, url)
+    filename = createFilename(title, artist, album, url, storage_artist, storage_album)
                 
     plugin = 'plugin://%s/'  % ADDONID
     plugin += '?mode=%d'     % 999

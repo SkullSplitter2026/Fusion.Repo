@@ -1,0 +1,138 @@
+KODI ANDROID WEB FILE EXPLORER
+BENUTZERHANDBUCH
+Version 1.2.0
+© André Albus
+
+INHALTSVERZEICHNIS
+1. Zweck
+2. Voraussetzungen
+3. Start & Zugriff
+4. Benutzeroberfläche
+5. Dateioperationen (Schritt für Schritt)
+6. Upload & Restore (Backup einspielen) – ausführlich
+7. ZIP / UNZIP (synchron & asynchron)
+8. Kopieren & Einfügen (Clipboard)
+9. Löschen & Schutzmechanismen
+10. Medienvorschau und Streaming
+11. Einstellungen
+12. Fehlerbehebung & Tipps
+13. Sicherheitshinweise
+14. Lizenz
+
+1. ZWECK
+Dieses Add-on ermöglicht vollständigen Dateizugriff auf ein Kodi‑Android‑System über einen Webbrowser im lokalen Netzwerk. Es bietet einfache Bedienung für alltägliche Dateioperationen sowie leistungsfähige asynchrone Tasks für große Vorgänge.
+
+2. VORAUSSETZUNGEN
+- Kodi auf Android installiert
+- Gerät im selben LAN wie Ihr Browser
+- Browser (PC, Tablet, Smartphone)
+
+3. START & ZUGRIFF
+1. Add-on in Kodi starten.
+2. Notiere die angezeigte IP-Adresse und Port (z. B. http://192.168.1.50:8080).
+3. Öffne die Adresse im Browser.
+4. Falls Login aktiviert: Benutzername und Passwort eingeben.
+
+4. BENUTZEROBERFLÄCHE
+- **Farbgebung**: Die Oberfläche verwendet ein helles Farbschema mit blauen Akzenten und ist für Desktop und Mobilgeräte responsive gestaltet.
+- **Mobile Ansicht**: Die Darstellung passt sich automatisch an die Bildschirmgröße an; Touch‑Bedienung und Safe‑Area (Notch/Navigationsleiste) werden unterstützt.
+- **Video‑Thumbnails**: Vorschau als erstes Standbild (wird beim Scrollen nachgeladen).
+- **Root‑Umschaltung**: Mit den Buttons „Android Root“ und „Kodi Root“ oben in der Oberfläche kann zwischen dem Android‑System‑Root („/“) und dem Kodi‑Home‑Verzeichnis („~/.kodi“) gewechselt werden.
+- **Pfadnavigation**: Klick auf einen Ordner öffnet diesen.
+- **Dateiliste**: zeigt Name, Größe, Typ, Link‑Status.
+- **Kontextmenüs**: Pro Datei/Ordner gibt es ein Menü (⋯) mit Aktionen: Download, Kopieren, Löschen, ggf. Öffnen/Anzeigen/Bearbeiten.
+- **Fortschrittsanzeigen**: Bei asynchronen Tasks (ZIP‑Erstellung, Entpacken, Kopieren, Löschen) erscheint ein Fortschrittsbalken mit Prozentanzeige und Abbruch‑Button.
+
+5. DATEIOPERATIONEN (SCHRITT FÜR SCHRITT)
+5.1 Dateien herunterladen
+- Einzeldatei: Klick auf „Download“ im Kontextmenü → Browser lädt Datei (HTTP Range wird unterstützt).
+- Ordner: Wähle „ZIP Download“ im Kontextmenü → das Archiv wird on‑the‑fly erzeugt oder bei großen Ordnern asynchron im Hintergrund erstellt.
+
+5.2 Dateien hochladen
+- Navigiere zum Zielordner.
+- Klicke auf „Datei hochladen“ → wähle eine oder mehrere Dateien (mehrfachauswahl möglich) oder ein ZIP‑Archiv.
+- Bei ZIP‑Archiven erscheint ein Dialog, in dem Sie wählen können, ob das Archiv sofort entpackt werden soll oder nur hochgeladen wird.
+
+5.3 Dateien anzeigen / bearbeiten
+- Textdateien: integrierter Editor (CodeMirror) mit Syntax‑Highlighting; Speichern überschreibt die Originaldatei.
+- Bilder: Vorschau im Browser.
+- Videos/Audio: Streaming via HTTP Range mit integriertem Player; Vollbild möglich.
+
+6. UPLOAD & RESTORE (BACKUP EINSPIELN) – AUSFÜHRLICH
+6.1 Was ist ein Kodi-Backup?
+Ein vollständiges Kodi-Backup enthält:
+- ~/.kodi/addons
+- ~/.kodi/userdata (Database, addon_data, guisettings.xml, sources.xml)
+- Medienordner (falls relevant)
+- Optional kodi.log
+
+6.2 Backup hochladen und direkt entpacken
+1. Wähle im Web UI „Datei hochladen“.
+2. Wähle die Backup‑ZIP‑Datei aus.
+3. Im anschließenden Dialog wählst du „Sofort entpacken“.
+4. Das Add‑on entpackt das Archiv in das Zielverzeichnis. Dabei wird serverseitig erkannt, ob es sich um ein Kodi‑Backup handelt (anhand typischer DB‑Dateien wie Addons33.db, Textures13.db). Bei Erkennung werden die Dateien automatisch an die richtigen Stellen kopiert.
+
+6.3 WICHTIGER Ablauf nach Entpacken (Restore)
+- Nach dem Entpacken Kodi nicht normal beenden!
+- Kodi hält Einstellungen im RAM; normales Beenden kann alte Werte zurückschreiben und so neue Dateien überschreiben.
+- Stattdessen: Android → Einstellungen → Apps → Kodi → „Beenden erzwingen“ (Force Stop).
+- Danach Kodi neu starten; Kodi liest die neuen Dateien ein.
+
+6.4 Validierung nach Restore
+- Prüfe Addons, Einstellungen, Oberfläche.
+- Bei Problemen kodi.log prüfen.
+
+6.5 Alternative: Manuelles Restore (empfohlen für kritische Systeme)
+1. Stoppe Kodi vollständig (Force Stop).
+2. Kopiere Backup-Inhalte in temporäres Verzeichnis.
+3. Ersetze .kodi-Verzeichnis atomar (z. B. umbenennen).
+4. Starte Kodi neu.
+
+7. ZIP / UNZIP
+- ZIP on‑the‑fly: Download eines Verzeichnisses als ZIP ohne temporäre Datei (kann bei sehr vielen Dateien etwas dauern).
+- ZIP asynchron: Bei großen Ordnern wird automatisch ein asynchroner Task gestartet; der Fortschritt wird in der Oberfläche angezeigt.
+- UNZIP synchron: Beim Hochladen einer ZIP‑Datei mit der Option „Sofort entpacken“ wird synchron entpackt (Schutz vor Entpacken in geschützte Pfade ist aktiv).
+- UNZIP asynchron: Bei sehr großen ZIP‑Dateien kann der Server intern einen asynchronen Task starten; die Oberfläche zeigt dann den Fortschritt.
+
+8. KOPIEREN & EINFÜGEN (CLIPBOARD)
+- **Kopieren**: Im Kontextmenü einer Datei oder eines Ordners auf „Kopieren“ klicken. Die Quelle wird im Server‑Clipboard gespeichert.
+- **Einfügen**: Im Zielordner den Button „Einfügen“ verwenden. Bei großen Datenmengen wird ein asynchroner Kopiervorgang gestartet, der Fortschritt wird angezeigt.
+- Der aktuelle Inhalt der Zwischenablage wird im Seitenkopf angezeigt (Dateiname).
+
+9. LÖSCHEN & SCHUTZMECHANISMEN
+- **Einzeldateien**: Über das Kontextmenü → „Löschen“. Geschützte Dateien werden abgelehnt.
+- **Verzeichnisinhalt löschen**: Mit dem Button „Verzeichnis Inhalt löschen“ werden alle Dateien und Unterordner des aktuellen Verzeichnisses gelöscht (der Ordner selbst bleibt erhalten). Bei großen Verzeichnissen startet asynchroner Task mit Fortschrittsanzeige.
+- **Schutzmechanismen**: Das Add‑on schützt kritische Kodi‑Pfade (z. B. ~/.kodi, Addon‑Verzeichnisse) vor versehentlichem Löschen, Überschreiben oder Entpacken. Diese Schutzfunktionen können in den Addon‑Einstellungen angepasst werden.
+
+10. MEDIENVORSCHAU UND STREAMING
+- **Bilder**: Direktanzeige im Browser.
+- **Videos/Audio**: Streaming mit HTTP Range; unterstützt Seek im Player.
+- **Video‑Thumbnails**: Beim Laden der Dateiliste werden für Videodateien automatisch Vorschaubilder aus dem ersten Frame generiert (Lazy‑Loading, nur wenn sie im sichtbaren Bereich sind).
+- Große Mediendateien sollten direkt gestreamt werden, statt sie komplett herunterzuladen.
+
+11. EINSTELLUNGEN
+Alle Einstellungen werden über die Kodi‑Addon‑Konfiguration vorgenommen (nicht über die Weboberfläche):
+- Port (Standard 8080)
+- Benutzername / Passwort (aktiviert HTTP‑Login)
+- Log‑Level (DEBUG/INFO/WARN/ERROR)
+- Maximale parallele Tasks (max_tasks)
+- FOLLOW_SYMLINKS (true/false)
+- Schutzoptionen: PROTECT_DELETE_ENABLED, PROTECT_UNZIP_ENABLED, INSERT_PROTECT_ENABLED
+- Safelists: Cleaner, Extract, Insert (CSV‑Listen)
+
+12. FEHLERBEHEBUNG & TIPPS
+- **Kein Zugriff**: IP/Port prüfen, Firewall, Gerät im LAN.
+- **Login‑Probleme**: Cookies löschen, Browser neu starten.
+- **Langsame Operationen**: Prüfe, ob Zielpfad FUSE (öffentlicher Speicher) ist; Operationen im Kodi‑Pfad sind schneller.
+- **Bei Restore‑Problemen**: kodi.log prüfen; ggf. Restore erneut durchführen und Kodi per Force Stop neu starten.
+
+13. SICHERHEITSHINWEISE
+- Aktivieren Sie Login, wenn das Gerät im unsicheren Netzwerk ist.
+- Deaktivieren Sie Schutzfunktionen nur, wenn Sie genau wissen, was Sie tun.
+- Verwenden Sie sichere Netzwerke (VPN) für entfernten Zugriff.
+
+14. LIZENZ
+- GPL-2.0-or-later
+- Autor: André Albus
+
+ENDE DES BENUTZERHANDBUCHS

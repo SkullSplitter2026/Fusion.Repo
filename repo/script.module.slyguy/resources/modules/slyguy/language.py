@@ -322,6 +322,7 @@ class BaseLanguage(object):
     REMOVE_WATCHLIST            = 32234
     WATCHLIST_ADDED             = 32235
     WATCHLIST_REMOVED           = 32236
+    IA_WEBOS_ERROR              = 32237
 
     def __init__(self):
         self._addon_map = {}    

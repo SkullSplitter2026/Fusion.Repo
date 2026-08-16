@@ -222,7 +222,7 @@ def handle_client(client):
 # Server (Kodi service)
 # =====================================================
 
-def server():
+def server(monitor=None):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((LISTEN_HOST, LISTEN_PORT))
@@ -231,7 +231,8 @@ def server():
 
     logging.info(f"[PROXY] ativo em {LISTEN_HOST}:{LISTEN_PORT}")
 
-    monitor = xbmc.Monitor()
+    if monitor is None:
+        monitor = xbmc.Monitor()
     while not monitor.abortRequested():
         try:
             client, addr = sock.accept()

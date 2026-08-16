@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.program.kodi.android.webexplorer"
+       name="Kodi Android Web File Explorer"
+       version="1.2.0"
+       provider-name="André Albus">
+
+  <requires>
+    <import addon="xbmc.python" version="3.0.0" />
+  </requires>
+
+  <extension point="xbmc.python.pluginsource" library="default.py">
+    <provides>executable</provides>
+  </extension>
+
+  <extension point="xbmc.addon.metadata">
+    <summary lang="de_DE">Kodi Android Web File Explorer © André Albus</summary>
+
+    <description lang="de_DE">
+Kodi Android Web File Explorer / E-Dat-300320260500 Ver-1.2.0
+Programm-Addon mit Start-/Stop-Button und Web-Benutzeroberfläche
+
+Funktionen:
+- Verzeichnisse durchsuchen
+- Dateien und Ordner herunterladen (Ordner als ZIP mit Fortschrittsanzeige)
+- Dateien hochladen (ZIP optional direkt entpacken mit Fortschrittsanzeige)
+- ZIP-Dateien manuell entpacken (mit Fortschrittsanzeige)
+- Kopieren und Einfügen (Copy-only) mit optionalem Schutz für kritische Kodi- und Addon-Pfade
+- Textdateien anzeigen und bearbeiten (integrierter Editor)
+- Bilder direkt im Browser anzeigen
+- Videos streamen (HTTP Range)
+
+Buttons:
+- Android Root
+- Kodi Root
+- Datei hochladen
+- Verzeichnisinhalt als ZIP herunterladen
+- Verzeichnisinhalt löschen (mit Fortschrittsanzeige und Abbruchmöglichkeit)
+- Kopieren
+- Einfügen
+- Kodi beenden
+- App-Info öffnen
+- Server schließen
+
+Weitere Details:
+- Root-Pfade: Android "/" oder Kodi "~/.kodi"
+- Port einstellbar (Standard: 8080)
+- Optionaler HTML-Login (aktiv bei Benutzername und Passwort)
+- Schutzfunktionen für Löschen, Entpacken und Einfügen unter ~/.kodi ein-/ausschaltbar
+- Safelists konfigurierbar
+- Symlinks optional folgen
+- Mobile und Desktop UI mit Auto-/Manual-Umschaltung
+- Medienvorschau für Bilder, Videos und Textdateien
+- Nur unter Android installier- und ausführbar
+
+Geschwindigkeits-Hinweis (Android-Dateisystem):
+Android unterscheidet intern zwischen zwei Speicherarten:
+
+1. Kodi-App-Pfad (~/.kodi)
+   - liegt im echten internen Dateisystem (ext4/f2fs)
+   - sehr schnell, direkter Kernel-Zugriff
+   - ideal für große Kopier-, ZIP- und Löschvorgänge
+
+2. Öffentliche Speicherorte (z. B. /storage/emulated/0/Download)
+   - laufen über Androids FUSE-/Emulationsschicht
+   - deutlich langsamer, da jeder Zugriff durch mehrere Sicherheits- und Übersetzungsschichten geht
+   - große Operationen können hier spürbar länger dauern
+
+Dieses Verhalten ist systembedingt und kein Fehler des Add-ons.
+
+Kodi-Backup-Installation (kurz erklärt):
+1. Wählen Sie die gewünschte Kodi-Backup-Datei aus.
+2. Wählen Sie beim Upload die Option "Backup direkt entpacken".
+3. Das Add-on entpackt die Datei und erkennt automatisch anhand der Addons- und Texture-Datenbank, ob es sich um ein Kodi-Backup handelt.
+4. Wird ein Backup erkannt, installiert und aktiviert das Add-on dieses automatisch.
+5. Wichtig: Kodi nach der Installation nicht normal beenden.
+   Beim normalen Beenden schreibt Kodi seine aktuell im Speicher befindlichen Einstellungen und Daten zurück auf die Festplatte.
+   Dadurch würden die alten (vor dem Restore geladenen) Daten die neuen Backup-Dateien überschreiben.
+   Stattdessen: "App-Info öffnen" -> "Beenden erzwingen".
+6. Kodi erneut starten. Beim nächsten Start wird das Backup vollständig geladen (Add-ons, Einstellungen, Oberfläche).
+    </description>
+
+    <platform>android</platform>
+    <license>GPL-2.0-or-later</license>
+
+    <assets>
+      <icon>resources/art/icon.png</icon>
+      <fanart>resources/art/fanart.png</fanart>
+      <screenshot>resources/art/screenshot0.png</screenshot>
+      <screenshot>resources/art/screenshot1.png</screenshot>
+      <screenshot>resources/art/screenshot2.png</screenshot>
+      <screenshot>resources/art/screenshot3.png</screenshot>
+      <screenshot>resources/art/screenshot4.png</screenshot>
+      <screenshot>resources/art/screenshot5.png</screenshot>
+      <screenshot>resources/art/screenshot6.png</screenshot>
+      <screenshot>resources/art/screenshot7.png</screenshot>
+      <screenshot>resources/art/screenshot8.png</screenshot>
+      <screenshot>resources/art/screenshot9.png</screenshot>
+      <screenshot>resources/art/screenshot10.png</screenshot>
+      <screenshot>resources/art/screenshot11.png</screenshot>
+      <screenshot>resources/art/screenshot12.png</screenshot>
+      <screenshot>resources/art/screenshot13.png</screenshot>
+    </assets>
+
+    <reuselanguageinvoker>true</reuselanguageinvoker>
+  </extension>
+</addon>

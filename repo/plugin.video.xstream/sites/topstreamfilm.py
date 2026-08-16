@@ -7,9 +7,12 @@
 # showEntries:    6 Stunden
 # showEpisodes:   4 Stunden
     
-from resources.lib.handler.ParameterHandler import ParameterHandler
+import xbmcgui
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.handler.requestHandler import cRequestHandler
-from resources.lib.tools import logger, cParser
+from resources.lib.logger import logger
+from resources.lib.wrappers.meinecloud import resolveMeinecloud, resolveMeinecloudSerial, expandHosterList, buildHosterFromUrl, MEINECLOUD_TRIGGER
+from resources.lib.tools import cParser
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.config import cConfig
 from resources.lib.gui.gui import cGui
@@ -29,10 +32,9 @@ STATUS = cConfig().getSetting('plugin_' + SITE_IDENTIFIER + '_status') # Status 
 ACTIVE = cConfig().getSetting('plugin_' + SITE_IDENTIFIER) # Ob Plugin aktiviert ist oder nicht
 
 URL_MAIN = 'https://' + DOMAIN
-# URL_MAIN = 'https://www.topstreamfilm.live'
 
 URL_ALL = URL_MAIN + '/filme-online-sehen/'
-URL_MOVIES = URL_MAIN + '/beliebte-filme-online/'
+URL_MOVIES = URL_MAIN + '/beliebte-filme-online.html'
 URL_KINO = URL_MAIN + '/kinofilme/'
 URL_SERIES = URL_MAIN + '/serien/'
 URL_SEARCH = URL_MAIN + '/?story=%s&do=search&subaction=search'
@@ -41,34 +43,34 @@ URL_SEARCH = URL_MAIN + '/?story=%s&do=search&subaction=search'
 
 def load(): # Menu structure of the site plugin
     logger.info('Load %s' % SITE_NAME)
+    xbmcgui.Window(10000).clearProperty('xstream.topstreamfilm.lastSearchText')
+    xbmcgui.Window(10000).clearProperty('xstream.topstreamfilm.lastYear')
     params = ParameterHandler()
-    params.setParam('sUrl', URL_ALL)
-    cGui().addFolder(cGuiElement('Alle Filme', SITE_IDENTIFIER, 'showEntries'), params)
-    params.setParam('sUrl', URL_MOVIES)
-    cGui().addFolder(cGuiElement('Kürzlich hinzugefügt', SITE_IDENTIFIER, 'showEntries'), params)  # Neue Uploads
     params.setParam('sUrl', URL_KINO)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30501), SITE_IDENTIFIER, 'showEntries'), params)  # Kinofilme
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30501), SITE_IDENTIFIER, 'showEntries'), params)  # Aktuelle Releases
+    params.setParam('sUrl', URL_MOVIES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30521), SITE_IDENTIFIER, 'showEntries'), params)  # Beliebt (TOP-Liste der Seite)
+    params.setParam('sUrl', URL_ALL)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30502), SITE_IDENTIFIER, 'showEntries'), params)  # Filme
+    params.setParam('sUrl', URL_SERIES)
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30511), SITE_IDENTIFIER, 'showEntries'), params)  # Series
     params.setParam('Value', 'KATEGORIEN')
     cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30506), SITE_IDENTIFIER, 'showValue'), params)    # Genre
     params.setParam('Value', 'LAND')
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30538), SITE_IDENTIFIER, 'showValue'), params)  # Country
-    cGui().addFolder(cGuiElement('Jahr', SITE_IDENTIFIER, 'showYearSearch'))  # New Year entry
-    params.setParam('sUrl', URL_SERIES)
-    cGui().addFolder(cGuiElement('Serien', SITE_IDENTIFIER, 'showEntries'), params)
-    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Search
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30538), SITE_IDENTIFIER, 'showValue'), params)  # Land
+    cGui().addFolder(cGuiElement(cConfig().getLocalizedString(30520), SITE_IDENTIFIER, 'showSearch'), params)   # Suche
     cGui().setEndOfDirectory()
 
 
 def showValue():
     params = ParameterHandler()
+    sValue = params.getValue('Value')
     oRequest = cRequestHandler(URL_MAIN)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 48  # 48 Stunden
     sHtmlContent = oRequest.request()
-    pattern = '>{0}</a>(.*?)</ul>'.format(params.getValue('Value'))
+    pattern = '>{0}</a>(.*?)</ul>'.format(sValue)
     isMatch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, pattern)
     if not isMatch:
-        pattern = '>{0}</(.*?)</ul>'.format(params.getValue('Value'))
+        pattern = '>{0}</(.*?)</ul>'.format(sValue)
         isMatch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, pattern)
     if isMatch:
         isMatch, aResult = cParser.parse(sHtmlContainer, 'href="([^"]+).*?>([^<]+)')
@@ -76,9 +78,18 @@ def showValue():
         cGui().showInfo()
         return
 
+    # Navigations-Einträge filtern bei Genre (KATEGORIEN)
+    nav_slugs = ['filme', 'filme1', 'kinofilme', 'serien', 'serienstream-deutsch',
+                 'kinofilme-online', 'aktuelle-kinofilme-im-kino', 'demnachst',
+                 'filme-online-sehen', 'filme-stream', 'neue-filme',
+                 'erotik', 'erotikfilme']
     for sUrl, sName in aResult:
         if sUrl.startswith('/'):
             sUrl = URL_MAIN + sUrl
+        if sValue == 'KATEGORIEN':
+            slug = sUrl.rstrip('/').split('/')[-1].lower()
+            if slug in nav_slugs:
+                continue
         params.setParam('sUrl', sUrl)
         cGui().addFolder(cGuiElement(sName, SITE_IDENTIFIER, 'showEntries'), params)
     cGui().setEndOfDirectory()
@@ -90,8 +101,6 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False, sSearchPageText =
     isTvshow = False
     if not entryUrl: entryUrl = params.getValue('sUrl')
     oRequest = cRequestHandler(entryUrl, ignoreErrors=(sGui is not False))
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # 6 Stunden
     sHtmlContent = oRequest.request()
     pattern = 'TPostMv">.*?href="([^"]+).*?data-src="([^"]+).*?Title">([^<]+)(.*?)</li>'
     isMatch, aResult = cParser.parse(sHtmlContent, pattern)
@@ -110,7 +119,7 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False, sSearchPageText =
         if int(sDuration) <= int('70'): # Wenn Laufzeit kleiner oder gleich 70min, dann ist es eine Serie.
             isTvshow = True
         else:
-            from resources.lib.tmdb import cTMDB
+            from resources.lib.tmdb.api import cTMDB
             oMetaget = cTMDB()
             if not oMetaget:
                 isTvshow = False
@@ -142,6 +151,8 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False, sSearchPageText =
         params.setParam('entryUrl', sUrl)
         params.setParam('sThumbnail', sThumbnail)
         params.setParam('sDesc', sDesc)
+        params.setParam('sName', sName)
+        if isYear: params.setParam('sYear', sYear)  # Aki: Year an showSeasons weitergeben
         oGui.addFolder(oGuiElement, params, isTvshow, total)
     if not sGui and not sSearchText and not sSearchPageText:
         isMatchNextPage, sNextUrl = cParser.parseSingleResult(sHtmlContent, 'href="([^"]+)">Next')
@@ -150,12 +161,14 @@ def showEntries(entryUrl=False, sGui=False, sSearchText=False, sSearchPageText =
         isMatchSiteSearch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, 'class="wp-pagenavi">(.*?)Next')
         if isMatchSiteSearch:
             isMatch, aResult = cParser.parse(sHtmlContainer, r'<span>([\d]+)</span>.*?nav_ext">.*?">([\d]+)</a>.*?href="([^"]+)')
-            for sPageActive, sPageLast, sNextPage in aResult:
-                #sPageName = '[I]Seitensuche starten  >>> [/I] Seite ' + str(sPageActive) + ' von ' + str(sPageLast) + ' Seiten  [I]<<<[/I]'
-                sPageName = cConfig().getLocalizedString(30284) + str(sPageActive) + cConfig().getLocalizedString(30285) + str(sPageLast) + cConfig().getLocalizedString(30286)
-                params.setParam('sNextPage', sNextPage)
-                params.setParam('sPageLast', sPageLast)
-                oGui.searchNextPage(sPageName, SITE_IDENTIFIER, 'showSearchPage', params)
+            if isMatch:
+                for sPageActive, sPageLast, sNextPage in aResult:
+                    #sPageName = '[I]Seitensuche starten  >>> [/I] Seite ' + str(sPageActive) + ' von ' + str(sPageLast) + ' Seiten  [I]<<<[/I]'
+                    sPageName = cConfig().getLocalizedString(30284) + str(sPageActive) + cConfig().getLocalizedString(30285) + str(sPageLast) + cConfig().getLocalizedString(30286)
+                    params.setParam('sNextPage', sNextPage)
+                    params.setParam('sPageLast', sPageLast)
+                    oGui.searchNextPage(sPageName, SITE_IDENTIFIER, 'showSearchPage', params)
+
         # End Page Function
 
         if isMatchNextPage:
@@ -171,22 +184,42 @@ def showSeasons():
     sUrl = params.getValue('entryUrl')
     sThumbnail = params.getValue('sThumbnail')
     isDesc = params.getValue('sDesc')
+    sTmdbID = params.getValue('tmdbID') or ''
+    sName = params.getValue('sName') or ''
+    sYear = params.getValue('sYear') or ''  # Aki: Year aus Listen-Ebene uebernehmen
     oRequest = cRequestHandler(sUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 6  # HTML Cache Zeit 6 Stunden
     sHtmlContent = oRequest.request()
     pattern = '<div class="tt_season">(.*)</ul>'
     isMatch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, pattern)
+    aResult = []
     if isMatch:
         isMatch, aResult = cParser.parse(sHtmlContainer, r'"#season-(\d+)')
-    if not isMatch:
+    
+    # meinecloud-Fallback: alte DLE-Pattern leer (z.B. neue Serien wie Stranger Things
+    # haben Daten nur via meinecloud serials.php Endpoint). Bei 0 Treffern
+    # IMDB-ID extrahieren und meinecloud-Resolver fragen.
+    if not aResult:
+        _, aImdb = cParser.parse(sHtmlContent, r'(tt\d{7,9})')
+        sImdbId = aImdb[0] if aImdb else ''
+        if sImdbId:
+            episodes = resolveMeinecloudSerial(sImdbId, referer=sUrl, siteHtml=sHtmlContent)
+            if episodes:
+                aResult = sorted({str(ep['season']) for ep in episodes}, key=int)
+    
+    if not aResult:
         cGui().showInfo()
         return
     total = len(aResult)
     for sSeason in aResult:
-        oGuiElement = cGuiElement('Staffel ' + str(sSeason), SITE_IDENTIFIER, 'showEpisodes')
+        oGuiElement = cGuiElement(cConfig().getLocalizedString(30512) + ' ' + str(sSeason), SITE_IDENTIFIER, 'showEpisodes')
         oGuiElement.setSeason(sSeason)
         oGuiElement.setMediaType('season')
+        if sName:
+            oGuiElement.setTVShowTitle(sName)
+        if sTmdbID:
+            oGuiElement.addItemValue('tmdb_id', sTmdbID)
+        if sYear:
+            oGuiElement.addItemValue('year', sYear)  # Aki: Year auf Staffel setzen
         oGuiElement.setThumbnail(sThumbnail)
         if isDesc:
             oGuiElement.setDescription(isDesc)
@@ -203,20 +236,42 @@ def showEpisodes():
     sSeason = params.getValue('season')
     isDesc = params.getValue('sDesc')
     oRequest = cRequestHandler(entryUrl)
-    if cConfig().getSetting('global_search_' + SITE_IDENTIFIER) == 'true':
-        oRequest.cacheTime = 60 * 60 * 4  # HTML Cache Zeit 4 Stunden
     sHtmlContent = oRequest.request()
     pattern = 'id="season-%s(.*?)</ul>' % sSeason
     isMatch, sHtmlContainer = cParser.parseSingleResult(sHtmlContent, pattern)
+    aResult = []
+    aMeinecloudEpisodes = []  # Bei meinecloud-Fallback: Episoden-Dicts mit Titel
     if isMatch:
         isMatch, aResult = cParser.parse(sHtmlContainer, r'data-title="Episode\s(\d+)')
-    if not isMatch:
+    
+    # meinecloud-Fallback: alte DLE-Pattern leer. IMDB-ID extrahieren, meinecloud
+    # fragen, Episoden der angefragten Staffel filtern.
+    if not aResult:
+        _, aImdb = cParser.parse(sHtmlContent, r'(tt\d{7,9})')
+        sImdbId = aImdb[0] if aImdb else ''
+        if sImdbId:
+            allEps = resolveMeinecloudSerial(sImdbId, referer=entryUrl, siteHtml=sHtmlContent)
+            try:
+                iSeason = int(sSeason)
+            except (TypeError, ValueError):
+                iSeason = 0
+            aMeinecloudEpisodes = [ep for ep in allEps if ep['season'] == iSeason]
+            aMeinecloudEpisodes.sort(key=lambda ep: ep['episode'])
+            aResult = [str(ep['episode']) for ep in aMeinecloudEpisodes]
+    
+    if not aResult:
         cGui().showInfo()
         return
 
     total = len(aResult)
-    for sEpisode in aResult:
-        oGuiElement = cGuiElement('Episode ' + str(sEpisode), SITE_IDENTIFIER, 'showEpisodeHosters')
+    for i, sEpisode in enumerate(aResult):
+        # meinecloud-Mode: Episode-Titel aus den Dict-Daten verwenden, sonst nur Nummer
+        if aMeinecloudEpisodes:
+            ep = aMeinecloudEpisodes[i]
+            sLabel = '%s %s — %s' % (cConfig().getLocalizedString(30513), str(sEpisode), ep['title'])
+        else:
+            sLabel = cConfig().getLocalizedString(30513) + ' ' + str(sEpisode)
+        oGuiElement = cGuiElement(sLabel, SITE_IDENTIFIER, 'showEpisodeHosters')
         oGuiElement.setThumbnail(sThumbnail)
         if isDesc:
             oGuiElement.setDescription(isDesc)
@@ -246,15 +301,35 @@ def showEpisodeHosters():
             isMatch, aResult = cParser.parse(sHtmlLink, 'data-link="([^"]+)')
             if isMatch:
                 sQuality = '720'
+                # Meinecloud-Wrapper expandieren via zentralem Helper.
+                aResult = expandHosterList(aResult, referer=URL_MAIN + '/')
+
                 for sUrl in aResult:
-                    if 'youtube' in sUrl:
-                        continue
-                    elif sUrl.startswith('//'):
-                        sUrl = 'https:' + sUrl
-                    sName = cParser.urlparse(sUrl).split('.')[0].strip()
-                    if cConfig().isBlockedHoster(sName)[0]: continue  # Hoster aus settings.xml oder deaktivierten Resolver ausschließen
-                    hoster = {'link': sUrl, 'name': sName, 'displayedName': '%s [I][%sp][/I]' % (sName, sQuality), 'quality': sQuality}
+                    # Standard-Hoster-Dict via zentralem Helper.
+                    hoster = buildHosterFromUrl(sUrl, sQuality=sQuality, includeQualitySuffix=True)
+                    if hoster:
+                        hosters.append(hoster)
+    # meinecloud-Fallback: keine Hoster aus DLE-HTML gefunden. IMDB-ID extrahieren,
+    # meinecloud fragen, gewuenschte Episode rausfiltern. Aktuell liefert meinecloud
+    # nur 1 Hoster pro Episode (default dropload) — Architektur-bedingt.
+    if not hosters:
+        _, aImdb = cParser.parse(sHtmlContent, r'(tt\d{7,9})')
+        sImdbId = aImdb[0] if aImdb else ''
+        if sImdbId:
+            try:
+                iSeason = int(sSeason)
+                iEpisode = int(sEpisode)
+            except (TypeError, ValueError):
+                iSeason = iEpisode = 0
+            allEps = resolveMeinecloudSerial(sImdbId, referer=sUrl, siteHtml=sHtmlContent)
+            for ep in allEps:
+                if ep['season'] != iSeason or ep['episode'] != iEpisode:
+                    continue
+                # Standard-Hoster-Dict via zentralem Helper
+                hoster = buildHosterFromUrl(ep['url'], sQuality='720', includeQualitySuffix=True)
+                if hoster:
                     hosters.append(hoster)
+    
     if hosters:
         hosters.append('getHosterUrl')
     return hosters
@@ -272,15 +347,21 @@ def showHosters():
         isMatch, aResult = cParser.parse(sHtmlContainer, 'data-link="([^"]+)')
         if isMatch:
             sQuality = '720'
+
+            # Meinecloud-Wrapper expandieren via zentralem Helper (meinecloud.expandHosterList).
+
+            aResult = expandHosterList(aResult, referer=URL_MAIN + '/')
+
+
             for sUrl in aResult:
-                if 'youtube' in sUrl:
-                    continue
-                elif sUrl.startswith('//'):
-                    sUrl = 'https:' + sUrl
-                sName = cParser.urlparse(sUrl).split('.')[0].strip()
-                if cConfig().isBlockedHoster(sName)[0]: continue  # Hoster aus settings.xml oder deaktivierten Resolver ausschließen
-                hoster = {'link': sUrl, 'name': sName, 'displayedName': '%s [I][%sp][/I]' % (sName, sQuality), 'quality': sQuality}
-                hosters.append(hoster)
+
+                # Standard-Hoster-Dict via zentralem Helper.
+
+                hoster = buildHosterFromUrl(sUrl, sQuality=sQuality, includeQualitySuffix=True)
+
+                if hoster:
+
+                    hosters.append(hoster)
         if hosters:
             hosters.append('getHosterUrl')
         return hosters
@@ -291,8 +372,12 @@ def getHosterUrl(sUrl=False):
 
 
 def showSearch():
-    sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
-    if not sSearchText: return
+    win = xbmcgui.Window(10000)
+    sSearchText = win.getProperty('xstream.topstreamfilm.lastSearchText')
+    if not sSearchText:
+        sSearchText = cGui().showKeyBoard(sHeading=cConfig().getLocalizedString(30281))
+        if not sSearchText: return
+        win.setProperty('xstream.topstreamfilm.lastSearchText', sSearchText)
     _search(False, sSearchText)
     cGui().setEndOfDirectory()
 
@@ -311,12 +396,4 @@ def showSearchPage(): # Suche für die Page Funktion
     if not sSearchPageText: return
     sNextSearchPage = sNextPage.split('page/')[0].strip() + 'page/' + sSearchPageText + '/'
     showEntries(sNextSearchPage)
-    cGui().setEndOfDirectory()
-
-
-def showYearSearch():
-    sYear = cGui().showKeyBoard(sHeading="Jahr eintragen (z.B., 2017)")
-    if not sYear: return
-    searchUrl = URL_MAIN + '/xfsearch/' + sYear
-    showEntries(searchUrl)
     cGui().setEndOfDirectory()

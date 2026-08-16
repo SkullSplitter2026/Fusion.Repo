@@ -12,57 +12,40 @@ import ssl
 import certifi
 import socket
 import zlib
-import http.client
 
 from resources.lib.config import cConfig
-from resources.lib.tools import logger, cCache
+from resources.lib.logger import logger
+from resources.lib.cache import cCache
+from resources.lib.tools import infoDialog
 from xbmcvfs import translatePath
 
-from urllib.parse import quote, urlencode, urlparse, quote_plus
+from urllib.parse import quote, urlencode, urlparse, quote_plus, urljoin
 from urllib.error import HTTPError, URLError
 from urllib.request import HTTPHandler, HTTPSHandler, Request, HTTPCookieProcessor, build_opener, urlopen, HTTPRedirectHandler
 from http.cookiejar import LWPCookieJar, Cookie
 from http.client import HTTPException
 from random import choice
+from contextlib import contextmanager
 
-class IPHTTPSConnection(http.client.HTTPSConnection):
-    def __init__(self, host, ip=None, port=None, timeout=socket._GLOBAL_DEFAULT_TIMEOUT, context=None):
-        self.context = context
-        # If an IP is provided, connect to it rather than the resolved host.
-        self.ip = ip
-        self.actual_host = host  # original hostname for SNI and Host header
-        super().__init__(host if not ip else ip, port, timeout=timeout, context=context)
-
-    def connect(self):
-        # Create a socket connection to the provided IP (if any)
-        if self.ip:
-            self.sock = self._create_connection((self.ip, self.port), self.timeout)
-            #if self._tunnel_host:
-            #    self._tunnel()
-            # Wrap the socket with our SSL context using the actual host for SNI.
-            self.sock = self.context.wrap_socket(self.sock, server_hostname=self.actual_host)
-        else:
-            super().connect()
-
-class CustomSecureHTTPSHandler(HTTPSHandler):
-    def __init__(self, ip=None):
-        # Create an SSL context with certifi's CA bundle.
-        context = ssl.create_default_context(cafile=certifi.where())
-        # If an IP is provided, disable hostname checking (since we'll verify using SNI later).
-        context.check_hostname = False if ip else True
-        context.verify_mode = ssl.CERT_REQUIRED
-        self.ip = ip
-        self.context = context
-        super().__init__(context=context)
-
-    def https_open(self, req):
-        # Extract the hostname from the request URL.
-        parsed = urlparse(req.full_url)
-        host = parsed.hostname
-        # Define a connection factory that returns an IPHTTPSConnection
-        def connection_factory(*args, **kwargs):
-            return IPHTTPSConnection(host, ip=self.ip, timeout=req.timeout, context=self.context)
-        return self.do_open(connection_factory, req)
+@contextmanager
+def _doh_resolution(hostname, ip):
+    """DNS-Bypass via getaddrinfo-Patch: loest 'hostname' temporaer auf 'ip' auf.
+    Anders als ein direkter IP-Connect bleibt das SSL-Zertifikat gueltig, weil die
+    Verbindung weiterhin den echten Hostnamen kennt (SNI + Cert-Hostname stimmen).
+    Patch ist eng gekapselt und wird im finally IMMER zurueckgesetzt."""
+    if not ip:
+        yield
+        return
+    _orig_getaddrinfo = socket.getaddrinfo
+    def _patched(host, *args, **kwargs):
+        if host == hostname:
+            return _orig_getaddrinfo(ip, *args, **kwargs)
+        return _orig_getaddrinfo(host, *args, **kwargs)
+    socket.getaddrinfo = _patched
+    try:
+        yield
+    finally:
+        socket.getaddrinfo = _orig_getaddrinfo
 
 
 class RedirectFilter(HTTPRedirectHandler):
@@ -73,24 +56,30 @@ class RedirectFilter(HTTPRedirectHandler):
                 return None
         return HTTPRedirectHandler.redirect_request(self, req, fp, code, msg, hdrs, newurl)
 
+
+class _NoRedirect(HTTPRedirectHandler):
+    # Folgt Redirects NICHT: redirect_request gibt None zurueck, wodurch urllib die
+    # 3xx-Antwort als HTTPError durchreicht -> dort steht der Location-Header.
+    def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+        return None
+
 class cRequestHandler:
     # useful for e.g. tmdb request where multiple requests are made within a loop
     persistent_openers = {}
 
     @staticmethod
     def RandomUA():
-        #Random User Agents aktualisiert 08.06.2025
-        FF_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:139.0) Gecko/20100101 Firefox/139.0'
-        OPERA_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36 OPR/119.0.0.0'
-        ANDROID_USER_AGENT = 'Mozilla/5.0 (Linux; Android 15; SM-S931U Build/AP3A.240905.015.A2; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/132.0.6834.163 Mobile Safari/537.36'
-        EDGE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36 Edg/134.0.0.0'
-        CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36'
-        SAFARI_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.4 Safari/605.1.15'
+        # Random User Agents aktualisiert 01.07.2026 (Chrome 150 Stable ab 30.06.2026)
+        FF_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:152.0) Gecko/20100101 Firefox/152.0'
+        OPERA_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36 OPR/133.0.0.0'
+        EDGE_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36 Edg/150.0.0.0'
+        CHROME_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/150.0.0.0 Safari/537.36'
+        SAFARI_USER_AGENT = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.5 Safari/605.1.15'
 
         _User_Agents = [FF_USER_AGENT, OPERA_USER_AGENT, EDGE_USER_AGENT, CHROME_USER_AGENT, SAFARI_USER_AGENT]
         return choice(_User_Agents)
 
-    def __init__(self, sUrl, caching=True, ignoreErrors=False, method='GET', data=None, compression=True, jspost=False, ssl_verify=False, bypass_dns=False):
+    def __init__(self, sUrl, caching=True, ignoreErrors=False, method='GET', data=None, compression=True, jspost=False, ssl_verify=False):
         self._sUrl = self.__cleanupUrl(sUrl)
         self._sRealUrl = ''
         self._USER_AGENT = self.RandomUA()
@@ -102,7 +91,6 @@ class cRequestHandler:
         self._Status = ''
         self._sResponseHeader = ''
         self._ssl_verify = ssl_verify
-        self._bypass_dns = bypass_dns
         self.ignoreDiscard(False)
         self.ignoreExpired(False)
         self.caching = caching
@@ -111,7 +99,7 @@ class cRequestHandler:
         self.ignoreErrors = ignoreErrors
         self.compression = compression
         self.jspost = jspost
-        self.cacheTime = int(cConfig().getSetting('cacheTime', 360)) *60 # 360 Minuten * 60 = 6 Stunden Cachetime
+        self.cacheTime = int(cConfig().getSetting('cacheTime', 1)) * 3600  # Stunden * 3600 = Sekunden
         self.requestTimeout = int(cConfig().getSetting('requestTimeout', 10))
         self.bypassDNSlock = (cConfig().getSetting('bypassDNSlock', 'false') == 'true')
         self.removeBreakLines(True)
@@ -163,11 +151,12 @@ class cRequestHandler:
         self.addHeaderEntry('Keep-Alive', 'timeout=5')
 
     @staticmethod
-    def __getDefaultHandler(ssl_verify, ip=None):
-        if ip:
-            return [CustomSecureHTTPSHandler(ip=ip)]    
-        elif ssl_verify:
-            return [CustomSecureHTTPSHandler()]
+    def __getDefaultHandler(ssl_verify):
+        if ssl_verify:
+            ssl_context = ssl.create_default_context(cafile=certifi.where())
+            ssl_context.check_hostname = True
+            ssl_context.verify_mode = ssl.CERT_REQUIRED
+            return [HTTPSHandler(context=ssl_context)]
         else:
             ssl_context = ssl.create_default_context()
             ssl_context.check_hostname = False
@@ -198,13 +187,12 @@ class cRequestHandler:
         else:
             logger.info('-> [requestHandler]: read html for %s' % self.getRequestUri())
 
-        # nur ausführen wenn der übergabeparameter und die konfiguration passen
-        if self._bypass_dns and self.bypassDNSlock:
-            ### DNS lock bypass
+        # DNS-Bypass global ueber Setting (kein per-Site-Flag mehr)
+        if self.bypassDNSlock:
             ip_override = self.__doh_request(self._sUrl)
-            ### DNS lock bypass
         else:
             ip_override = None
+        _doh_host = urlparse(self._sUrl).hostname
 
         cookieJar = LWPCookieJar(filename=self._cookiePath)
         try:
@@ -216,7 +204,7 @@ class cRequestHandler:
         if domain in cRequestHandler.persistent_openers:
             opener = cRequestHandler.persistent_openers[domain]
         else:
-            handlers = self.__getDefaultHandler(self._ssl_verify, ip_override)        
+            handlers = self.__getDefaultHandler(self._ssl_verify)        
             handlers += [HTTPHandler(), HTTPCookieProcessor(cookiejar=cookieJar), RedirectFilter()]
             opener = build_opener(*handlers)
             cRequestHandler.persistent_openers[domain] = opener
@@ -251,7 +239,8 @@ class cRequestHandler:
         cookieJar.add_cookie_header(oRequest)
         
         try:
-            oResponse = opener.open(oRequest)
+            with _doh_resolution(_doh_host, ip_override):
+                oResponse = opener.open(oRequest)
         except HTTPError as e:
             if e.code >= 400:
                 self._Status = str(e.code)
@@ -275,11 +264,7 @@ class cRequestHandler:
                         return 'DDOS GUARD SCHUTZ'
                 elif 'cloudflare' in str(e.headers):
                     if not self.ignoreErrors:
-                        # Angepasste, nutzerfreundliche Cloudflare Meldung
-                        msg = 'Die angeforderte Seite (%s) ist durch Cloudflare geschützt.' % urlparse(self._sUrl).netloc
-                        msg += '\nDer  Zugriff ist deshalb blockiert.'
-                        msg += '\n\nBitte versuchen Sie es später erneut oder prüfen Sie die Webseite im Browser.'
-                        xbmcgui.Dialog().ok('Cloudflare Schutz aktiv', msg)
+                        infoDialog(cConfig().getLocalizedString(30829), icon='WARNING', time=10000)
                     logger.error(' -> [requestHandler]: Failed Cloudflare active: ' + self._sUrl)
                     return 'CLOUDFLARE-SCHUTZ AKTIV' # Meldung geht als "e.doc" in die exception nach default.py
                 else:
@@ -346,6 +331,53 @@ class cRequestHandler:
 
         return sContent
 
+    def getRedirectUrl(self):
+        # Loest EINEN Redirect-Hop auf und liefert NUR das Location-Ziel zurueck,
+        # ohne die Zielseite selbst zu laden. Noetig fuer Hoster, deren Embed-Seite
+        # hinter Cloudflare liegt (z.B. DoodStream): ein GET auf die Seite
+        # loest den CF-Block aus. Das Redirect-Ziel liefert die Quell-Seite (URL_MAIN)
+        # selbst aus, die Embed-Seite wird hier gar nicht kontaktiert; ResolveURL holt die
+        # Seite spaeter mit eigener Logik. Nutzt bewusst dieselbe DoH/Cookie/UA-Basis
+        # wie request(), aber KEINE persistent_openers (No-Follow darf den Cache nicht
+        # verseuchen, sonst wuerden normale Requests derselben Domain nicht mehr folgen).
+        if self.bypassDNSlock:
+            ip_override = self.__doh_request(self._sUrl)
+        else:
+            ip_override = None
+        _doh_host = urlparse(self._sUrl).hostname
+
+        cookieJar = LWPCookieJar(filename=self._cookiePath)
+        try:
+            cookieJar.load(ignore_discard=self.__bIgnoreDiscard, ignore_expires=self.__bIgnoreExpired)
+        except Exception as e:
+            logger.debug(e)
+
+        handlers = self.__getDefaultHandler(self._ssl_verify)
+        handlers += [HTTPHandler(), HTTPCookieProcessor(cookiejar=cookieJar), _NoRedirect()]
+        opener = build_opener(*handlers)
+
+        oRequest = Request(self._sUrl)
+        for key, value in self._headerEntries.items():
+            oRequest.add_header(key, value)
+        cookieJar.add_cookie_header(oRequest)
+
+        sLocation = ''
+        try:
+            with _doh_resolution(_doh_host, ip_override):
+                oResponse = opener.open(oRequest)
+            sLocation = oResponse.geturl()  # kein Redirect gekommen (z.B. direkt 200) -> finale URL
+        except HTTPError as e:
+            if e.code in (301, 302, 303, 307, 308):
+                sLocation = e.headers.get('Location', '')
+            else:
+                logger.error(' -> [requestHandler]: getRedirectUrl HTTPError %s Url: %s' % (str(e), self._sUrl))
+        except (URLError, HTTPException) as e:
+            logger.error(' -> [requestHandler]: getRedirectUrl Fehler %s Url: %s' % (str(e), self._sUrl))
+
+        if sLocation:
+            sLocation = urljoin(self._sUrl, sLocation)  # relative Location -> absolut
+        return sLocation
+
     def __setCookiePath(self):
         cookieFile = os.path.join(self._profilePath, 'cookies')
         if not os.path.exists(cookieFile):
@@ -389,13 +421,8 @@ class cRequestHandler:
         # Parse the URL
         parsed_url = urlparse(url)
         hostname = parsed_url.hostname
-        key = 'doh_request' + hostname
-
-        if self.isMemoryCacheActive and self.cacheTime > 0:
-            ip_address = self.__readVolatileCache(key, self.cacheTime)
-            if ip_address:
-                return ip_address
-        
+        # Bewusst NICHT gecacht: DDoS-Guard-Edges rotieren, eine im RAM-Cache
+        # festgehaltene IP koennte innerhalb der TTL sterben -> immer frisch aufloesen.
         params = urlencode({"name": hostname, "type": "A"})
         doh_url = f"{doh_server}?{params}"
         req = Request(doh_url)
@@ -407,10 +434,11 @@ class cRequestHandler:
             dns_response = json.loads(response_text)
             if "Answer" not in dns_response:
                 raise Exception("Invalid DNS response")
-            ip_address = dns_response["Answer"][0]["data"]
-            if self.isMemoryCacheActive and self.cacheTime > 0:
-                self.__writeVolatileCache(key, ip_address)
-
+            # Ersten echten A-Record (type 1) aus der Answer-Liste nehmen statt stur [0]:
+            # bei CNAME-Ketten kann die IP erst weiter hinten stehen, [0] waere dann der CNAME.
+            ip_address = next((a["data"] for a in dns_response["Answer"] if a.get("type") == 1), None)
+            if not ip_address:
+                raise Exception("No A record in DNS answer")
             return ip_address
         except Exception as e:
             logger.error(' -> [requestHandler]: DNS query failed: %s' % e)
@@ -461,7 +489,7 @@ class cRequestHandler:
         except Exception:
             return 0
 
-    def clearCache(self):
+    def clearCache(self, silent=False):
         # clear volatile cache
         if self.isMemoryCacheActive:
             self._memCache.clear()
@@ -471,7 +499,8 @@ class cRequestHandler:
         files = os.listdir(self._cachePath)
         for file in files:
             os.remove(os.path.join(self._cachePath, file))
-            xbmcgui.Dialog().notification('xStream', cConfig().getLocalizedString(30405), xbmcgui.NOTIFICATION_INFO, 100, False)
+        if not silent and files:
+            infoDialog(cConfig().getLocalizedString(30405), icon='INFO')
 
 
 class cBF:

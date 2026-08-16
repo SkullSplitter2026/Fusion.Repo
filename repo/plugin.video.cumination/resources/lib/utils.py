@@ -1428,7 +1428,7 @@ class VideoPlayer():
             raise ValueError(i18n('no_regex'))
 
     @_cancellable
-    def play_from_kt_player(self, html, url=None):
+    def play_from_kt_player(self, html, referer=None, follow_redirects=False):
         license = re.search(r"license_code:\s*'(\$\d+)", html, re.DOTALL | re.IGNORECASE)
         if license:
             license = license.group(1)
@@ -1461,11 +1461,18 @@ class VideoPlayer():
                 return
             from resources.lib.decrypters.kvsplayer import kvs_decode
             videourl = kvs_decode(videourl, license)
-        videourl += '|User-Agent={0}&Referer={1}'.format(USER_AGENT, url)
+
+        if follow_redirects:
+            videourl = getVideoLink(videourl, referer)
+
+        videourl += '|User-Agent={0}'.format(USER_AGENT)
+        if referer:
+            videourl += '&Referer={0}'.format(referer)
 
         if not videourl:
             self.progress.close()
             return
+        self.progress.update(90, "[CR]{0}[CR]".format(i18n('play_dlink')))
         self.play_from_direct_link(videourl)
 
     @_cancellable
@@ -1500,11 +1507,12 @@ class VideoPlayer():
         if not link:
             notify(i18n('rslv_fail'), '{0} {1}'.format(source.title, i18n('not_rslv')))
         else:
+            self.progress.close()
             playvid(link, self.name, self.download, IA_check=self.IA_check)
 
     @_cancellable
     def play_from_direct_link(self, direct_link):
-        self.progress.update(90, "[CR]{0}[CR]".format(i18n('play_dlink')))
+        self.progress.close()
         playvid(direct_link, self.name, self.download, IA_check=self.IA_check)
 
     @_cancellable
@@ -1632,7 +1640,7 @@ def next_page(site, list_mode, html, re_npurl, re_npnr=None, re_lpnr=None, video
         if contextm:
             cm_page = (addon_sys + "?mode=" + str(contextm) + "&list_mode=" + list_mode + "&url=" + urllib_parse.quote_plus(npurl) + "&np=" + str(npnr) + "&lp=" + str(lpnr))
             cm = [('[COLOR violet]Goto Page #[/COLOR]', 'RunPlugin(' + cm_page + ')')]
-        site.add_dir('Next Page {}{}'.format(np, lp), npurl, list_mode, contextm=cm)
+        site.add_dir('Next Page {}{}'.format(np, lp), npurl, list_mode, site.img_next, contextm=cm)
 
 
 def fix_url(url, siteurl=None, baseurl=None):
@@ -1651,9 +1659,9 @@ def fix_url(url, siteurl=None, baseurl=None):
     return url
 
 
-def videos_list(site, playvid, html, delimiter, re_videopage, re_name=None, re_img=None, re_quality=None, re_duration=None, contextm=None, skip=None, thumbnails=None):
+def videos_list(site, playvid, html, delimiter, re_videopage, re_name=None, re_img=None, re_quality=None, re_duration=None, contextm=None, skip=None, thumbnails=None, img_options=None):
     if thumbnails:
-        th = Thumbnails(site.name)
+        th = Thumbnails(site.name, img_options=img_options)
 
     videolist = re.split(delimiter, html)
     if videolist:
@@ -1678,6 +1686,9 @@ def videos_list(site, playvid, html, delimiter, re_videopage, re_name=None, re_i
                     img = fix_url(match.group(1).replace('&amp;', '&'), site.url)
                     if thumbnails:
                         img = th.cache_img(img) if thumbnails == 'cache' else th.fix_img(img)
+                    elif img_options:
+                        img = img + img_options
+
             quality = ''
             if re_quality:
                 match = re.search(re_quality, video, flags=re.DOTALL | re.IGNORECASE)
@@ -1820,12 +1831,13 @@ def ToggleDebug():
 
 class Thumbnails:
     # Download thumbnails to local cache and correct the extensions of WEBP images that were renamed to JPG, which cannot be displayed in KODI 21
-    def __init__(self, site):
+    def __init__(self, site, img_options=None):
         self.path = os.path.join(profileDir, 'thumbnails', site)
         if not os.path.exists(self.path):
             os.makedirs(self.path)
         self.cache_time = 480
         self.clean()
+        self.img_options = img_options
 
     def clean(self):
         current_time = time.time()
@@ -1837,7 +1849,16 @@ class Thumbnails:
 
     def download_image(self, img, img_path):
         try:
-            response = urlopen(Request(img, headers=base_hdrs))
+            if self.img_options:
+                headers = base_hdrs.copy()
+                options = self.img_options.replace('|', '').split('&')
+                for option in options:
+                    if '=' in option:
+                        key, value = option.split('=', 1)
+                        headers[key] = value
+                response = urlopen(Request(img, headers=headers))
+            else:
+                response = urlopen(Request(img, headers=base_hdrs))
             try:
                 with open(img_path, 'wb') as f:
                     f.write(response.read())

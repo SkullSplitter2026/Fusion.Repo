@@ -1,0 +1,1 @@
+# sKulls DB Backup - Kodi Database Backup Addon

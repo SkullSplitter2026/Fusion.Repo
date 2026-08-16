@@ -1,0 +1,131 @@
+# Kodi Media Center language file
+# Addon Name: I Love Music
+# Addon id: plugin.audio.iloveradio
+# Addon Provider: Sascha
+
+msgid ""
+msgstr ""
+"Project-Id-Version: Kodi Addons\n"
+"Language: de_DE\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+
+# MAIN MENU
+
+msgctxt "#30000"
+msgid "Search"
+msgstr "Suche"
+
+msgctxt "#30001"
+msgid "Favorites"
+msgstr "Favoriten"
+
+msgctxt "#30002"
+msgid "Categories"
+msgstr "Kategorien"
+
+msgctxt "#30003"
+msgid "All Channels"
+msgstr "Alle Sender"
+
+msgctxt "#30004"
+msgid "Settings"
+msgstr "Einstellungen"
+
+
+# CONTEXT MENU
+
+msgctxt "#30010"
+msgid "Add to favorites"
+msgstr "Zu Favoriten hinzufügen"
+
+msgctxt "#30011"
+msgid "Remove from favorites"
+msgstr "Aus Favoriten entfernen"
+
+
+# SEARCH
+
+msgctxt "#30020"
+msgid "Search"
+msgstr "Suche"
+
+msgctxt "#30021"
+msgid "No results found"
+msgstr "Keine Treffer gefunden"
+
+
+# NOTIFICATIONS
+
+msgctxt "#30030"
+msgid "Now playing"
+msgstr "Jetzt läuft"
+
+msgctxt "#30031"
+msgid "M3U successfully exported"
+msgstr "M3U erfolgreich exportiert"
+
+msgctxt "#30032"
+msgid "M3U export failed"
+msgstr "M3U Export fehlgeschlagen"
+
+
+# SETTINGS
+
+msgctxt "#30050"
+msgid "General"
+msgstr "Allgemein"
+
+msgctxt "#30051"
+msgid "Show notifications"
+msgstr "Benachrichtigungen anzeigen"
+
+msgctxt "#30052"
+msgid "Enable fanart"
+msgstr "Fanart aktivieren"
+
+msgctxt "#30053"
+msgid "Show settings in main menu"
+msgstr "Einstellungen im Hauptmenü anzeigen"
+
+msgctxt "#30054"
+msgid "Stream type"
+msgstr "Streamtyp"
+
+msgctxt "#30055"
+msgid "Auto Refresh"
+msgstr "Auto Refresh"
+
+msgctxt "#30056"
+msgid "Enable auto refresh"
+msgstr "Auto Refresh aktivieren"
+
+msgctxt "#30057"
+msgid "Refresh interval (seconds)"
+msgstr "Refresh Intervall (Sekunden)"
+
+msgctxt "#30058"
+msgid "Live Metadata"
+msgstr "Live Metadaten"
+
+msgctxt "#30059"
+msgid "Automatically update song title"
+msgstr "Songtitel automatisch aktualisieren"
+
+msgctxt "#30060"
+msgid "Metadata interval (seconds)"
+msgstr "Metadaten Intervall (Sekunden)"
+
+msgctxt "#30061"
+msgid "M3U Export"
+msgstr "M3U Export"
+
+msgctxt "#30062"
+msgid "Export path"
+msgstr "Export Pfad"
+
+msgctxt "#30063"
+msgid "Export M3U playlist"
+msgstr "M3U Playlist exportieren"

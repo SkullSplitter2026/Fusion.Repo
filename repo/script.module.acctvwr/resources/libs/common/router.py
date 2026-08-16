@@ -8,7 +8,7 @@ from resources.libs.gui import menu
 from resources.libs import ext_db
 
 #Variables
-amgr = 'AM Lite ERROR'
+amgr = 'AM Lite'
 execute = xbmc.executebuiltin
 joinPath = os.path.join
 exists = xbmcvfs.exists
@@ -158,7 +158,7 @@ def remake_settings(plugin_id, name):   # Fen Light & Forks
         try:
             settings_cache = importlib.import_module('caches.settings_cache')
         except Exception as e:
-            xbmc.log(f'{amgr}: {name} settings_cache import failed {e}', xbmc.LOGINFO)
+            xbmc.log(f'{amgr}: {name} settings_cache import failed {e}', xbmc.LOGERROR)
             return
 
         if not hasattr(settings_cache, 'sync_settings'):
@@ -169,7 +169,7 @@ def remake_settings(plugin_id, name):   # Fen Light & Forks
         xbmc.log(f'{amgr}: {name} settings remade', xbmc.LOGINFO)
         
     except Exception as e:
-        xbmc.log(f'{amgr}: Failed to remake {name} settings {e}', xbmc.LOGINFO)
+        xbmc.log(f'{amgr}: Failed to remake {name} settings {e}', xbmc.LOGERROR)
         
 #ROUTER        
 class Router:
@@ -660,4 +660,4 @@ class Router:
         from resources.libs.common import directory
         directory.set_view()
         xbmcplugin.setContent(handle, 'files')
-        xbmcplugin.endOfDirectory(handle)
+        xbmcplugin.endOfDirectory(handle, succeeded=True, updateListing=True, cacheToDisc=False)

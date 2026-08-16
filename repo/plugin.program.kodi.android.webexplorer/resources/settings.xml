@@ -1,0 +1,29 @@
+<settings>
+    <category label="Allgemein">
+        <setting id="port" type="number" label="Port" default="8080" range="1,65535" />
+        <setting id="username" type="text" label="Benutzername (optional)" default="" />
+        <setting id="password" type="text" label="Passwort (optional)" option="hidden" default="" />
+        <setting type="lsep" label="Hinweis: Login ist nur aktiv, wenn Benutzername UND Passwort gesetzt sind." />
+        <setting id="log_level" type="enum" label="Log-Level" values="DEBUG|INFO|WARN|ERROR" default="INFO" />
+        <setting id="max_tasks" type="number" label="Max. parallele Tasks" default="4" range="1,32" />
+        <setting type="lsep" label="UI-Auswahl" />
+        <setting id="ui_mode" type="enum" label="UI Modus" values="AUTO|DESKTOP|MOBILE" default="AUTO" />
+    </category>
+
+    <category label="Dateisystem">
+        <setting id="follow_symlinks" type="bool" label="Symlinks folgen (auf eigene Gefahr)" default="false" />
+    </category>
+
+    <category label="~/.kodi Schutz &amp; Safelists">
+        <setting id="protect_delete" type="bool" label="Schutz beim Löschen aktivieren" default="true" />
+        <setting id="protect_unzip" type="bool" label="Schutz beim Entpacken aktivieren" default="true" />
+        <setting id="insert_protect" type="bool" label="Schutz beim Einfügen (und Upload) aktivieren" default="true" />
+        <setting type="lsep" label="Cleaner-Safeliste (Basename): z. B.: plugin.program.kodi.android.webexplorer,Addons33.db,Textures13.db,kodi.log" />
+        <setting id="cleaner_safelist" type="text" label="Cleaner-Safeliste (Basename)" default="plugin.program.kodi.android.webexplorer,Addons33.db,Textures13.db,kodi.log" />
+        <setting type="lsep" label="Entpacken-Safeliste (Top-Level im ZIP): z. B.: plugin.program.kodi.android.webexplorer" />
+        <setting id="extract_safelist" type="text" label="Entpacken-Safeliste (ZIP Top-Level)" default="plugin.program.kodi.android.webexplorer" />
+        <setting type="lsep" label="Einfügen-Safeliste (Basename): z. B.: plugin.program.kodi.android.webexplorer" />
+        <setting id="insert_safelist" type="text" label="Einfügen-Safeliste (Basename)" default="plugin.program.kodi.android.webexplorer" />
+        <setting type="lsep" label="Achtung: Schutz deaktivieren kann Kodi/Addons beschädigen. Nur nutzen, wenn du weißt, was du tust." />
+    </category>
+</settings>

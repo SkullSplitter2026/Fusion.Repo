@@ -21,6 +21,7 @@ if KODI_VERSION >= 20:
 
 def redirect(location):
     xbmc.executebuiltin('Container.Update({},replace)'.format(location))
+   # xbmc.executebuiltin('ActivateWindow(videos,{},return)'.format(url)) # works to launch plugin from program
 
 
 def get_view_id():
@@ -367,10 +368,10 @@ class Item(object):
                 li.setProperty('{}.live_delay'.format(self.inputstream.addon_id), '24')
 
             if self.inputstream.license_key:
-                license_url = self.inputstream.license_key
+                license_url = redirect_url(fix_url(self.inputstream.license_key))
                 license_headers = get_url_headers(self.inputstream.license_headers) if self.inputstream.license_headers else headers
                 li.setProperty('{}.license_key'.format(self.inputstream.addon_id), u'{url}|Content-Type={content_type}{headers}|{challenge}|{response}'.format(
-                    url = get_url(redirect_url(fix_url(self.inputstream.license_key)), plugin_proxy=True),
+                    url = get_url(license_url, plugin_proxy=True),
                     content_type = self.inputstream.content_type,
                     headers = '&' + license_headers if license_headers else '',
                     challenge = self.inputstream.challenge,
@@ -433,7 +434,7 @@ class Item(object):
                         mimetype = 'application/vnd.ms-sstr+xml'
 
                 proxy_data = {
-                    'manifest': self.manifest,
+                    'manifest': [self.manifest],
                     'slug': '{}-{}'.format(ADDON_ID, self.slug),
                     'license_url': license_url,
                     'session_id': hash_6(time.time()),

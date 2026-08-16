@@ -1,16 +1,25 @@
 import xbmc
 import xbmcaddon
-from app import server_run
 import threading
 
-# inicia servidor
-threading.Thread(target=server_run, daemon=True).start()
+# Global reference to server for cleanup
+_server_thread = None
 
-# mantém o addon vivo
+def run_server():
+    try:
+        from app import server_run
+        server_run()
+    except Exception:
+        pass
+
+# Start server in daemon thread
+_server_thread = threading.Thread(target=run_server, daemon=True)
+_server_thread.start()
+
+# Keep addon alive until Kodi requests shutdown
 monitor = xbmc.Monitor()
 while not monitor.abortRequested():
     if monitor.waitForAbort(1):
         break
 
-# encerra o servidor antes de sair
 print("Servidor Flask encerrado.")

@@ -2,17 +2,35 @@
 # Python 3
 #
 # 24.01.23 - Heptamer: Korrektur getpriorities (nun werden alle Hoster gelesen und sortiert)
-# 22.12.24 - Heptamer: m3u8 und mpd Files über inputstream adaptive abspielen lassen
+# 22.12.24 - Heptamer: m3u8 und mpd Files - MimeType für native Kodi Wiedergabe
+
+import re
 
 import xbmc
 import xbmcgui 
 import xbmcplugin
-from resources.lib.handler.ParameterHandler import ParameterHandler
+from resources.lib.handler.parameterHandler import ParameterHandler
 from resources.lib.gui.guiElement import cGuiElement
 from resources.lib.gui.gui import cGui
 from resources.lib.config import cConfig
 from resources.lib.player import cPlayer
-from resources.lib.tools import logger
+from resources.lib.logger import logger
+
+
+
+def _quality_to_res(value):
+    # Hoster-'quality' ist je nach Site ein roher String ('1080p', '1080', 'HD', '4K' ...).
+    # Robust auf eine Pixelhoehe zum Sortieren abbilden; nicht-aufloesende Labels -> 0.
+    s = str(value).lower()
+    if '2160' in s or '4k' in s: return 2160
+    if '1440' in s or '2k' in s: return 1440
+    if '1080' in s: return 1080
+    if '720' in s: return 720
+    if '480' in s: return 480
+    if '360' in s: return 360
+    if '240' in s: return 240
+    m = re.search(r'(\d{3,4})', s)
+    return int(m.group(1)) if m else 0
 
 
 class cHosterGui:
@@ -22,7 +40,6 @@ class cHosterGui:
         self.maxHoster = int(cConfig().getSetting('maxHoster', 100))
         self.dialog = False
 
-    # TODO: unify parts of play, download etc.
     def _getInfoAndResolve(self, siteResult):
         oGui = cGui()
         params = ParameterHandler()
@@ -59,7 +76,7 @@ class cHosterGui:
             return False
         # resolver response
         if link is not False:
-            data = {'title': fileName, 'season': params.getValue('season'), 'episode': params.getValue('episode'), 'showTitle': params.getValue('TVShowTitle'), 'thumb': params.getValue('thumb'), 'link': link}
+            data = {'title': fileName, 'season': params.getValue('season'), 'episode': params.getValue('episode'), 'showTitle': params.getValue('TVShowTitle'), 'thumb': params.getValue('thumb'), 'link': link, 'imdb_id': params.getValue('imdb_id'), 'year': params.getValue('year'), 'mediaType': params.getValue('mediaType')}
             return data
         return False
 
@@ -74,59 +91,55 @@ class cHosterGui:
             except:
                 pass
 
-        vers = int(xbmc.getInfoLabel("System.BuildVersion").split(".")[0])
-
         logger.info('-> [hoster]: play file link: ' + str(data['link']))
         list_item = xbmcgui.ListItem(path=data['link'])
-        #m3u8 und mpd via inputstream, exklusive Filemoon, da IA mit dem Hoster nicht unter Android läuft
-        if not 'filemoon' in siteResult['streamUrl']:
-            if '.m3u8' in data['link'] or '.mpd' in data['link']:
-                list_item.setProperty("inputstream", "inputstream.adaptive")
-                if '.mpd' in data['link']:
-                    if vers < 21: list_item.setProperty('inputstream.adaptive.manifest_type', 'mpd')
-                    list_item.setMimeType('application/dash+xml')
-                else:
-                    if vers < 21: list_item.setProperty('inputstream.adaptive.manifest_type', 'hls')
-                    list_item.setMimeType("application/vnd.apple.mpegurl")
-                if '|' in data['link']:
-                    data['link'], header = data['link'].split('|')
-                    list_item.setProperty('inputstream.adaptive.stream_headers', header)
-                    if vers > 19: list_item.setProperty('inputstream.adaptive.manifest_headers', header)
+        # MimeType setzen damit Kodi das Format nativ erkennt
+        if '.mpd' in data['link']:
+            list_item.setMimeType('application/dash+xml')
+            list_item.setContentLookup(False)
+        elif '.m3u8' in data['link']:
+            list_item.setMimeType('application/vnd.apple.mpegurl')
+            list_item.setContentLookup(False)
 
         if 'youtube' in data['link']:
             import time
             time.sleep(1)
-        info = {'Title': data['title']}
         if data['thumb']:
             list_item.setArt(data['thumb'])
-        if data['showTitle']:
-            info['Episode'] = data['episode']
-            info['Season'] = data['season']
-            info['TVShowTitle'] = data['showTitle']
 
-        #Neuer Video-Tag, mit Kodi 19 nicht kompatibel, daher folgende Abfrage
-        kodi_version = xbmc.getInfoLabel('System.BuildVersion')
-        if kodi_version[:2] < '20':
-            list_item.setInfo(type="Video", infoLabels=info)
+        vtag = list_item.getVideoInfoTag()
+        # Korrekten MediaType setzen (für Trakt.TV Scrobbling)
+        if data.get('showTitle') and data.get('episode'):
+            vtag.setMediaType('episode')
+        elif data.get('mediaType') in ('movie', 'episode', 'tvshow', 'season'):
+            vtag.setMediaType(data['mediaType'])
         else:
-            vtag = list_item.getVideoInfoTag()
             vtag.setMediaType('video')
-            if 'Title' in info:
+        if data.get('title'):
+            try:
+                vtag.setTitle(str(data['title']))
+            except: pass
+        if data.get('showTitle'):
+            try:
+                vtag.setTvShowTitle(data['showTitle'])
+            except: pass
+            if data.get('season'):
                 try:
-                    vtag.setTitle(str(info['Title']))
+                    vtag.setSeason(int(data['season']))
                 except: pass
-            if 'Season' in info:
+            if data.get('episode'):
                 try:
-                    vtag.setSeason(int(info['Season']))
+                    vtag.setEpisode(int(data['episode']))
                 except: pass
-            if 'Episode' in info:
-                try:
-                    vtag.setEpisode(int(info['Episode']))
-                except: pass
-            if 'TVShowTitle' in info:
-                try:
-                    vtag.setTvShowTitle(info['TVShowTitle'])
-                except: pass
+        # Jahr und IMDb ID setzen (für Trakt.TV Scrobbling)
+        if data.get('year'):
+            try:
+                vtag.setYear(int(data['year']))
+            except: pass
+        if data.get('imdb_id'):
+            try:
+                vtag.setUniqueID(str(data['imdb_id']), 'imdb', True)
+            except: pass
 
         list_item.setProperty('IsPlayable', 'true')
         if cGui().pluginHandle > 0:
@@ -158,135 +171,79 @@ class cHosterGui:
         oGui.showInfo(cConfig().getLocalizedString(30136), cConfig().getLocalizedString(30137), 5)
         return True
 
-    def download(self, siteResult=False):
-        from resources.lib.download import cDownload
-        logger.info('-> [hoster]: attempt download')
-        data = self._getInfoAndResolve(siteResult)
-        if not data: return False
-        logger.info('-> [hoster]: download file link: ' + data['link'])
-        if self.dialog:
-            self.dialog.close()
-        oDownload = cDownload()
-        oDownload.download(data['link'], data['title'])
-        return True
-
-    def sendToPyLoad(self, siteResult=False):
-        from resources.lib.handler.pyLoadHandler import cPyLoadHandler
-        logger.info('-> [hoster]: attempt download with pyLoad')
-        data = self._getInfoAndResolve(siteResult)
-        if not data: return False
-        cPyLoadHandler().sendToPyLoad(data['title'], data['link'])
-        return True
-
-    def sendToJDownloader(self, sMediaUrl=False):
-        from resources.lib.handler.jdownloaderHandler import cJDownloaderHandler
-        params = ParameterHandler()
-        if not sMediaUrl:
-            sMediaUrl = params.getValue('sMediaUrl')
-        if self.dialog:
-            self.dialog.close()
-        logger.info('-> [hoster]: call send to JDownloader: ' + sMediaUrl)
-        cJDownloaderHandler().sendToJDownloader(sMediaUrl)
-
-    def sendToJDownloader2(self, sMediaUrl=False):
-        from resources.lib.handler.jdownloader2Handler import cJDownloader2Handler
-        params = ParameterHandler()
-        if not sMediaUrl:
-            sMediaUrl = params.getValue('sMediaUrl')
-        if self.dialog:
-            self.dialog.close()
-        logger.info('-> [hoster]: call send to JDownloader2: ' + sMediaUrl)
-        cJDownloader2Handler().sendToJDownloader2(sMediaUrl)
-
-    def sendToMyJDownloader(self, sMediaUrl=False, sMovieTitle='xStream'):
-        from resources.lib.handler.myjdownloaderHandler import cMyJDownloaderHandler
-        params = ParameterHandler()
-        if not sMediaUrl:
-            sMediaUrl = params.getValue('sMediaUrl')
-        sMovieTitle = params.getValue('MovieTitle')
-        if not sMovieTitle:
-            sMovieTitle = params.getValue('Title')
-        if not sMovieTitle:  # only temporary
-            sMovieTitle = params.getValue('sMovieTitle')
-        if not sMovieTitle:
-            sMovieTitle = params.getValue('title')
-        if self.dialog:
-            self.dialog.close()
-        logger.info('-> [hoster]: call send to My.JDownloader: ' + sMediaUrl)
-        cMyJDownloaderHandler().sendToMyJDownloader(sMediaUrl, sMovieTitle)
-
     def __getPriorities(self, hosterList, filter=True):
         # Sort hosters based on their resolvers priority.
         ranking = []
-        # handles multihosters but is about 10 times slower
-        for hoster in hosterList:
 
-            # we try to load resolveurl within the loop, making sure that the resolver loads new with every cycle
-            try:
-                import resolveurl as resolver
-            except:
-                import urlresolver as resolver
-                 
+        # Import resolver module once (Python caches modules, re-importing in loop has no effect)
+        try:
+            import resolveurl as resolver_module
+        except:
+            import urlresolver as resolver_module
+
+        for hoster in hosterList:
             # accept hoster which is marked as resolveable by sitePlugin
             if hoster.get('resolveable', False):
                 ranking.append([0, hoster])
                 continue
-             
+
             try:
                 # serienstream VOE hoster = {'link': [sUrl, sName], aus array "[0]" True bzw. False
                 link = hoster['link'][0] if isinstance(hoster['link'], list) else hoster['link']
-                hmf = resolver.HostedMediaFile(url=link)
-                #hmf = resolver.HostedMediaFile(url=hoster['link'])
-            except:
+                hmf = resolver_module.HostedMediaFile(url=link)
+            except Exception as e:
+                logger.error('-> [hoster]: getPriorities HostedMediaFile error: %s' % e)
                 continue
 
             if not hmf.valid_url():
-                hmf = resolver.HostedMediaFile(host=hoster['name'].lower(), media_id='dummy')
+                hmf = resolver_module.HostedMediaFile(host=hoster['name'].lower(), media_id='dummy')
 
-            if len(hmf.get_resolvers()):
-                priority = False
-                for resolver in hmf.get_resolvers():
-                    # prefer individual priority
-                    if not resolver.isUniversal():
-                        priority = resolver._get_priority()
+            resolvers = hmf.get_resolvers()
+            if resolvers:
+                priority = None
+                for res in resolvers:
+                    # prefer individual hoster priority over universal (debrid) priority
+                    if not res.isUniversal():
+                        priority = res._get_priority()
                         break
-                    if not priority:
-                        priority = resolver._get_priority()
-                if priority:
+                    if priority is None:
+                        priority = res._get_priority()
+                if priority is not None:
                     ranking.append([priority, hoster])
             elif not filter:
                 ranking.append([999, hoster])
 
-            # Reset resolver so we have a fresh instance when loop starts again
-            del(resolver) 
+        # Combined sort: Language (asc) -> Quality (desc) -> Resolver Priority (asc)
+        has_language = any('languageCode' in hoster[1] for hoster in ranking)
 
-        if any('quality' in hoster[1] for hoster in ranking):
-            try:
-                # Sortiere Hoster nach Qualität (cConfig().getSetting('preferedQuality') == '5')
-                pref_quali = cConfig().getSetting('preferedQuality')
-                if pref_quali != '5' and any('quality' in hoster[1] and int(hoster[1]['quality']) == int(pref_quali) for hoster in ranking):
-                    ranking = sorted(ranking, key=lambda hoster: int('quality' in hoster[1] and hoster[1]['quality']) == int(pref_quali), reverse=True)
-                else:
-                # Wenn Hosterliste prüfen an ist, sortiere Hoster nach Prio Qualität
-                    ranking = sorted(ranking, key=lambda hoster: 'quality' in hoster[1] and int(hoster[1]['quality']), reverse=True)
-            except:
-                pass
-        # After sorting Quality, we sort for Hoster-Priority :) -Hep 24.01.23
-        # ranking = sorted(ranking, key=lambda ranking: ranking[0])
+        def sort_key(item):
+            priority, hoster = item
 
-        # Hoster Sprache über sLang im Siteplugin Prio nach sLang Code Reihenfolge (Deutsch, Englisch, Englisch mit untertitel
-        if ranking:
-            if  "languageCode" in ranking[0][1]:
-                ranking = sorted(ranking, key=lambda ranking: (ranking[1]["languageCode"],ranking[0]))
+            # 1) Language: ascending (lower code = preferred). Default 999 if no languageCode.
+            lang = hoster.get('languageCode', 999) if has_language else 0
+
+            # 2) Quality: hosters with quality info ranked higher than those without,
+            #    untereinander absteigend nach Qualitaet (hoechste zuerst).
+            has_qual = 'quality' in hoster
+            if has_qual:
+                qual_match = 0
+                qual_value = -_quality_to_res(hoster['quality'])  # negativ = absteigend
             else:
-                ranking = sorted(ranking, key=lambda ranking: ranking[0])
-        
-        
-        hosterQueue = []
-        
-        for i, hoster in ranking:
-            hosterQueue.append(hoster)
-        return hosterQueue
+                # No quality info: sort after hosters with known quality
+                qual_match = 2
+                qual_value = 0
+
+            # 3) Resolver priority: ascending (lower = better)
+            res_prio = priority
+
+            return (lang, qual_match, qual_value, res_prio)
+
+        try:
+            ranking = sorted(ranking, key=sort_key)
+        except Exception as e:
+            logger.error('-> [hoster]: getPriorities sort error: %s' % e)
+
+        return [hoster for _, hoster in ranking]
 
     def stream(self, playMode, siteName, function, url):
         self.dialog = xbmcgui.DialogProgress()
@@ -319,9 +276,7 @@ class cHosterGui:
                 return
 
             self.dialog.update(60, cConfig().getLocalizedString(30143))
-            # Sitplugins VOD mit in automatische Abspielliste aufnehmen (Da Links bei der Überprüfung der Verfügbarkeit gekickt werden)
-            if (playMode != 'jd') and (playMode != 'jd2') and (playMode != 'pyload') and (cConfig().getSetting('presortHoster') == 'true') and (playMode != 'myjd'):
-            #if (not siteName.startswith('vod_')) and (playMode != 'jd') and (playMode != 'jd2') and (playMode != 'pyload') and (cConfig().getSetting('presortHoster') == 'true') and (playMode != 'myjd'):
+            if cConfig().getSetting('presortHoster') == 'true':
                 siteResult = self.__getPriorities(siteResult)
             if not siteResult:
                 self.dialog.close()
@@ -363,18 +318,8 @@ class cHosterGui:
         self.dialog.update(95, cConfig().getLocalizedString(30146))
         if playMode == 'play':
             self.play(siteResult)
-        elif playMode == 'download':
-            self.download(siteResult)
         elif playMode == 'enqueue':
             self.addToPlaylist(siteResult)
-        elif playMode == 'jd':
-            self.sendToJDownloader(siteResult['streamUrl'])
-        elif playMode == 'jd2':
-            self.sendToJDownloader2(siteResult['streamUrl'])
-        elif playMode == 'myjd':
-            self.sendToMyJDownloader(siteResult['streamUrl'])
-        elif playMode == 'pyload':
-            self.sendToPyLoad(siteResult)
 
     def streamAuto(self, playMode, siteName, function):
         logger.info('-> [hoster]: auto stream initiated')
@@ -399,8 +344,7 @@ class cHosterGui:
             self.dialog.update(90, cConfig().getLocalizedString(30143))
             functionName = siteResult[-1]
             del siteResult[-1]
-            # Sitplugins aus dem VOD Bereich bei self.__getPriorities(siteResult) ausschliessen da sonst die Hoster gekickt werden.
-            if siteName.startswith('dummy'): #Falls Servernamen im VOD sich ändern, hier vod_ eintragen
+            if siteName.startswith('dummy'):
                 hosters = siteResult
             else:
                 hosters = self.__getPriorities(siteResult)
@@ -492,8 +436,6 @@ class cHosterGui:
                 if playMode == 'play' and i == 0:
                     if not self.play(partList[i]):
                         return False
-                elif playMode == 'download':
-                    self.download(partList[i])
                 elif playMode == 'enqueue' or (playMode == 'play' and i > 0):
                     self.addToPlaylist(partList[i])
             except:

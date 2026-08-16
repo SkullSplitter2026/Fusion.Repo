@@ -1,0 +1,46 @@
+<settings version="1">
+    <section id="plugin.program.sKullsDBbackup">
+        <category id="general" label="32301">
+            <group id="backup_group" label="32310">
+                <setting id="backup_path" type="path" label="32311">
+                    <level>0</level>
+                    <default></default>
+                    <constraints>
+                        <writable>true</writable>
+                        <allowempty>true</allowempty>
+                    </constraints>
+                    <control type="button" format="path">
+                        <heading>32311</heading>
+                    </control>
+                </setting>
+                <setting id="max_backups" type="integer" label="32312" default="10">
+                    <level>0</level>
+                    <default>10</default>
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>50</maximum>
+                        <step>1</step>
+                    </constraints>
+                    <control type="spinner" format="integer" />
+                </setting>
+            </group>
+            <group id="auto_backup_group" label="32320">
+                <setting id="auto_backup_enabled" type="boolean" label="32321" default="false">
+                    <level>0</level>
+                    <default>false</default>
+                    <control type="toggle" />
+                </setting>
+                <setting id="auto_backup_interval" type="integer" label="32322" default="24">
+                    <level>0</level>
+                    <default>24</default>
+                    <constraints>
+                        <minimum>1</minimum>
+                        <maximum>168</maximum>
+                        <step>1</step>
+                    </constraints>
+                    <control type="spinner" format="integer" />
+                </setting>
+            </group>
+        </category>
+    </section>
+</settings>

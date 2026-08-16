@@ -1,0 +1,260 @@
+KODI ANDROID WEB FILE EXPLORER
+ENTWICKLERHANDBUCH
+Version 1.2.0
+© André Albus
+
+INHALTSVERZEICHNIS
+1. Einleitung
+2. Architekturüberblick
+3. Authentifizierung und Sessions
+4. Allgemeine API-Regeln
+5. API-Endpunkte (vollständige Referenz)
+6. Asynchrone Tasks und Progress Reporting
+7. Backup: Erstellung und Restore (vollständig)
+8. Technische Hinweise zur Performance (FUSE vs. Kodi-Pfad)
+9. Schutz- und Sicherheitsmechanismen
+10. Fehlercodes und Verhalten
+11. Best Practices für Integrationen
+12. Lizenz und Kontakt
+
+1. EINLEITUNG
+Dieses Dokument beschreibt die API, ABI und das Verhalten des eingebetteten HTTP‑Servers des Kodi Add-ons "Kodi Android Web File Explorer". Es richtet sich an Entwickler, Integratoren und Administratoren, die den Webserver programmatisch ansprechen oder in Automatisierungs‑Workflows integrieren möchten.
+
+2. ARCHITEKTURÜBERBLICK
+Kurzbeschreibung:
+- Lokaler HTTP‑Server auf dem Android‑Gerät, erreichbar im LAN.
+- REST‑ähnliche Endpunkte für Dateioperationen, plus asynchrone Task‑Mechanik.
+- Schutzmechanismen für kritische Kodi‑Pfadbereiche (~/.kodi).
+- Unterstützt Upload, Download, ZIP/UNZIP, Copy/Paste, Delete, Streaming (HTTP Range).
+- UI: Statische HTML/JS/CSS in resources/html, responsives Design (ohne automatischen Dark Mode), Safe‑Area‑Unterstützung, Video‑Thumbnail‑Generierung clientseitig.
+
+Hauptkomponenten:
+- HTTP-Handler (ExplorerHandler): verarbeitet GET/POST, Auth, Streaming, Tasks.
+- Task-Manager: verwaltet ZipTask, UnzipTask, CopyTask, DeleteTask mit Semaphore-Limit.
+- Safelists & Schutzlogik: CLEANER_SAFELIST, EXTRACT_SAFELIST, INSERT_SAFELIST.
+- UI-Assets: statische HTML/JS/CSS in resources/html.
+
+3. AUTHENTIFIZIERUNG UND SESSIONS
+Aktivierung:
+- Authentifizierung ist aktiv, wenn in den Addon‑Einstellungen sowohl Benutzername als auch Passwort gesetzt sind.
+
+Login:
+- Endpoint: POST /login
+- Parameter: username, password
+- Erfolgreich: Redirect auf "/" und Set-Cookie: webexplorer_session=<token>
+- Fehler: Redirect auf "/login?err=1" oder HTTP 401
+
+Session-Handling:
+- Sessions werden serverseitig in einer Menge (sessions) verwaltet.
+- Cookie-Eigenschaften: HttpOnly, SameSite=Lax, Path=/, Max-Age (z. B. 86400s).
+- Nicht authentifizierte Anfragen werden auf /login umgeleitet.
+
+4. ALLGEMEINE API-REGELN
+- Alle Pfade sind relativ zum aktuellen Root (Android oder Kodi).
+- Antworten überwiegend als JSON; statische UI-Dateien als Bytes mit korrektem Content-Type.
+- Fehler werden über HTTP-Statuscodes signalisiert.
+- Parallele Tasks sind durch MAX_PARALLEL_TASKS begrenzt; bei Überschreitung HTTP 429.
+- Symlink-Verhalten ist konfigurierbar (FOLLOW_SYMLINKS).
+- Pfad-Validierung: safe_join() verhindert Directory Traversal; is_within() prüft Basis.
+
+5. API-ENDPUNKTE (vollständige Referenz)
+Hinweis: Alle Endpunkte akzeptieren optional query-Parameter path (relativer Pfad zum aktuellen Root).
+
+BASIS
+- GET / 
+  Liefert index.html (UI). Responsives Design, kein automatischer Dark Mode.
+- GET /login
+  Liefert Login-Seite (HTML).
+- POST /login
+  Authentifizierung (username, password).
+
+INFO
+- GET /api/info
+  Antwort: { "ips": [...], "port": 8080, "current_root": "Android|Kodi", "current_root_path": "...", "android_root_path": "...", "follow_symlinks": false }
+
+ROOT
+- GET /setroot?root=Android|Kodi
+  Wechselt Root; validiert Lesbarkeit.
+
+LISTING
+- GET /api/list?path=...
+  Liefert JSON mit items: [{name, relpath, is_dir, size, is_link}, ...] und clip-Status.
+
+DOWNLOAD
+- GET /download?path=...&includeRoot=0|1
+  - Wenn path Datei: stream_file() mit Range-Unterstützung.
+  - Wenn path Verzeichnis: stream_zip() (on-the-fly ZIP) oder asynchron via /zip_start.
+
+ZIP (asynchron)
+- GET /zip_start?path=...&includeRoot=0|1
+  Startet ZipTask; Antwort: {status: "ok", task_id, filename}
+- GET /zip_status?task=...
+  Statusabfrage: {total, done, bytes_total, bytes_done, state, message, filename}
+- GET /zip_cancel?task=...
+  Fordert Abbruch an.
+- GET /zip_get?task=...
+  Liefert fertiges Archiv (wenn state == done).
+
+UNZIP
+- GET /unzip?path=...
+  Synchronous unzip to same directory (returns skipped list on protected items).
+- GET /unzip_start?path=...
+  Startet UnzipTask asynchron.
+- GET /unzip_status?task=...
+- GET /unzip_cancel?task=...
+
+DELETE
+- GET /delete?path=...
+  Löscht Datei oder Verzeichnis (synchron). Schützt Root und Safelist-Pfade.
+- GET /deletecontents?path=...
+  Löscht Inhalt eines Verzeichnisses synchron.
+- GET /deletecontents_start?path=...
+  Startet DeleteTask asynchron.
+- GET /deletecontents_status?task=...
+- GET /deletecontents_cancel?task=...
+
+COPY / PASTE
+- GET /copy?path=...
+  Legt Quelle in Zwischenablage (server.clip_source).
+- GET /api/clip
+  {has: bool, name: string}
+- GET /clip_clear
+  Leert Zwischenablage.
+- GET /paste?path=...
+  Synchronous paste (copy) into destination directory.
+- GET /paste_start?path=...
+  Startet CopyTask asynchron.
+- GET /copy_status?task=...
+- GET /copy_cancel?task=...
+
+UPLOAD
+- POST /upload?path=...
+  Multipart/form-data; Feld "file" enthält Datei.
+  Optional: unpack=1 (entpacken), async=1 (asynchron).
+  Parser: _parse_multipart_from_file() arbeitet mit mmap oder memoryview, schreibt Upload-Parts in temporäre Dateien.
+
+SYSTEM
+- GET /shutdown
+  Stoppt Webserver (sicherer Shutdown).
+- GET /quit
+  Versucht xbmc.executebuiltin("Quit()") auszuführen.
+- GET /appinfo
+  Öffnet Android App-Info via StartAndroidActivity.
+
+6. ASYNCHRONE TASKS UND PROGRESS REPORTING
+Task-Model:
+- BaseTask: Felder total, done, bytes_total, bytes_done, state, message, started_at, finished_at.
+- Tasks melden Fortschritt über set_progress(), inc_bytes(), set_state().
+- Task-Slots werden über Semaphore (MAX_PARALLEL_TASKS) begrenzt.
+
+Progress-Strategien:
+- Byte-Updates werden aggregiert (z. B. 512 KB) bevor task.inc_bytes() aufgerufen wird.
+- Done-Updates werden ebenfalls gepuffert (z. B. nach 32 Dateien) um Lock-Contention zu reduzieren.
+- Statusabfrage-Endpunkte geben konsistente Schnappschüsse zurück; abgeschlossene Tasks werden nach einer Aufbewahrungszeit (z. B. 10 Minuten) bereinigt.
+
+Abbruch:
+- request_cancel() setzt Flag; Worker prüft regelmäßig is_canceled() und beendet sauber, entfernt ggf. unvollständige Dateien.
+
+Fehlerbehandlung:
+- Tasks setzen state auf "error" mit aussagekräftiger message; bei "canceled" wird "finished_at" gesetzt.
+
+7. BACKUP: ERSTELLUNG UND RESTORE (VOLLSTÄNDIG)
+Ziel:
+- Vollständiges Kodi-Backup inkl. Addons, userdata, Datenbanken, Medienmetadaten.
+
+7.1 Was gehört in ein Kodi-Backup?
+- ~/.kodi/addons
+- ~/.kodi/userdata
+  - Database (Addons33.db, Textures13.db, MyVideos*.db, etc.)
+  - addon_data
+  - guisettings.xml
+  - sources.xml
+  - keymaps, profiles
+- Medienordner (falls in Kodi konfiguriert)
+- Optional: kodi.log (für Debugging)
+
+7.2 Backup manuell erstellen (empfohlen)
+1. Kodi stoppen (empfohlen) oder sicherstellen, dass Kodi nicht aktiv schreibt.
+2. Kopiere die genannten Verzeichnisse in ein temporäres Verzeichnis.
+3. Prüfe Vollständigkeit (DB-Dateien vorhanden).
+4. Erstelle ein Archiv (ZIP oder TAR.GZ) des Snapshots.
+5. Sichere das Archiv extern (NAS, USB, Cloud).
+
+7.3 Backup mit Addon/Tools
+- Nutze Tools, die DB-Dateien konsistent sichern; ideal ist ein Zustand, in dem Kodi gestoppt ist.
+
+7.4 Backup einspielen (Restore) – empfohlener Ablauf
+WICHTIG: Kodi hält Einstellungen und Caches im RAM. Beim normalen Beenden schreibt Kodi diese zurück auf die Festplatte. Deshalb ist der Ablauf entscheidend.
+
+1. Backup hochladen:
+   - Über Web UI: Upload der Archivdatei; im Dialog „Sofort entpacken“ wählen.
+   - Alternativ: Archiv per SCP/ADB/NAS an Gerät kopieren.
+
+2. Entpacken:
+   - Addon entpackt Archiv in Zielverzeichnis; erkennt Kodi-Backup anhand DB-Dateien (Addons33.db, Textures13.db) und führt bei Erkennung die passende Platzierung durch.
+
+3. Nach dem Entpacken: KEIN normales Beenden von Kodi!
+   - Normales Beenden kann im RAM befindliche alte Daten zurückschreiben und so neue Dateien überschreiben.
+
+4. Kodi per Force Stop beenden:
+   - Android: Einstellungen → Apps → Kodi → „Beenden erzwingen“ (Force Stop).
+   - Force Stop beendet Kodi sofort ohne Rückschreibvorgang.
+
+5. Kodi neu starten:
+   - Kodi liest beim Start die neuen Dateien ein; Addons und Einstellungen werden initialisiert.
+
+6. Validierung:
+   - Prüfe Addons, Einstellungen, Oberfläche; kodi.log bei Problemen.
+
+7.5 Warum Force Stop notwendig ist
+- Kodi puffert viele Einstellungen und Caches im Arbeitsspeicher. Beim normalen Beenden schreibt Kodi diese zurück. Wenn ein Restore durchgeführt wurde, würden die im RAM befindlichen alten Werte beim normalen Beenden die neuen Dateien überschreiben. Ein erzwungenes Beenden verhindert diesen Rückschreibvorgang.
+
+7.6 Troubleshooting
+- Fehlende Addons: Prüfe ~/.kodi/addons.
+- DB-Inkonsistenzen: Prüfe DB-Dateien; ggf. aus anderem Backup wiederherstellen.
+- Startprobleme: Kodi-Log prüfen; problematische Addons temporär entfernen.
+
+8. TECHNISCHE HINWEISE ZUR PERFORMANCE (FUSE vs. KODI-PFAD)
+Unterschiede:
+- Kodi-App-Pfad (~/.kodi): echtes internes Dateisystem (ext4/f2fs) → schnelle I/O.
+- Öffentliche Speicherorte (/storage/emulated/0): laufen über Androids FUSE/Emulation → deutlich höhere Latenz.
+
+Optimierungen im Addon:
+- Verwendung von os.scandir() und iterativen Traversals reduziert stat()-Aufrufe.
+- Größere Puffer (z. B. CHUNK_SIZE = 1 MiB) reduzieren Systemcalls.
+- Aggregation von Byte- und Done-Updates reduziert Lock-Overhead.
+- Iterative Delete-Implementierung (Stack + scandir) vermeidet tiefe Rekursion.
+
+Grenzen:
+- Bei FUSE/SD-Karten bleibt Latenz systembedingt; native C-Binaries können nur begrenzt verbessern, da FUSE-Schicht weiterhin Latenz verursacht.
+
+9. SCHUTZ- UND SICHERHEITSMECHANISMEN
+- Safelists: CLEANER_SAFELIST, EXTRACT_SAFELIST, INSERT_SAFELIST definieren geschützte Basenames/Anker.
+- _should_skip_delete() und is_protected_path() verhindern Lösch-/Insert-Operationen in kritischen Bereichen.
+- INSERT_PROTECT_ENABLED verhindert Überschreiben existierender Ziele im Kodi-Home.
+- PROTECT_UNZIP_ENABLED verhindert Entpacken in geschützte Verzeichnisse.
+- FOLLOW_SYMLINKS steuert Symlink-Verhalten.
+- Task-Limit schützt vor Ressourcenüberlastung.
+
+10. FEHLERCODES UND VERHALTEN
+- 200 OK: erfolgreiche Operation
+- 201 Created / 202 Accepted: asynchrone Starts (task_id)
+- 400 Bad Request: ungültige Parameter
+- 401 Unauthorized: Auth fehlgeschlagen
+- 403 Forbidden: Schutzverletzung / Berechtigung
+- 404 Not Found: Datei/Verzeichnis nicht vorhanden
+- 429 Too Many Requests: Task-Limit erreicht
+- 500 Internal Server Error: unerwarteter Fehler (Logs prüfen)
+
+11. BEST PRACTICES FÜR INTEGRATIONEN
+- Polling-Intervalle für Task-Status nicht zu aggressiv (z. B. 1–2 s).
+- Bei großen Operationen: bevorzugt asynchrone Endpunkte nutzen.
+- Für Restore-Automatisierung: Kodi vor Restore stoppen, Dateien atomar ersetzen, Kodi per Force Stop neu starten.
+- Verwende sichere Verbindungen im LAN (z. B. VPN) wenn möglich; Addon bietet kein TLS out-of-the-box.
+
+12. LIZENZ UND KONTAKT
+- Lizenz: GPL-2.0-or-later
+- Autor: André Albus
+- Support: siehe Addon-Repository / Projektseite
+
+ENDE DES API / ABI ENTWICKLERHANDBUCH

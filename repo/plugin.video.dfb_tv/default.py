@@ -1,7 +1,7 @@
 ﻿# -*- coding: utf-8 -*-
 
 '''
-    Copyright (C) 2025 realvito
+    Copyright (C) 2026 realvito
 
     DFB - Sport
 
@@ -26,10 +26,10 @@ params = dict(parse_qsl(sys.argv[2][1:]))
 
 def run():
 	if params:
-		if params['mode'] == 'listVideos':
-			navigator.mainMenu(params['extras'])
-		elif params['mode'] == 'playVideo':
-			navigator.playVideo(params['url'])
+		if params['mode'] == 'list_videos':
+			navigator.main_menu(params['extra'])
+		elif params['mode'] == 'play_video':
+			navigator.play_video(params['link'])
 	else: ##### Delete complete old Userdata-Folder to cleanup old Entries #####
 		DONE = False ##### [plugin.video.dfb_tv v.2.1.1] - 25.05.25 #####
 		firstSCRIPT = xbmcvfs.translatePath(os.path.join(f"special://home{os.sep}addons{os.sep}{addon_id}{os.sep}lib{os.sep}")).encode('utf-8').decode('utf-8')
@@ -52,9 +52,9 @@ def run():
 		else:
 			DONE = True
 		if DONE is True:
-			if not xbmcvfs.exists(os.path.join(dataPath, 'settings.xml')):
-				xbmcvfs.mkdirs(dataPath)
+			if not xbmcvfs.exists(os.path.join(addon_profile, 'settings.xml')):
+				xbmcvfs.mkdirs(addon_profile)
 				xbmc.executebuiltin(f"Addon.OpenSettings({addon_id})")
-			navigator.mainMenu()
+			navigator.main_menu()
 
 run()

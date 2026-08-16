@@ -1,37 +1,64 @@
-﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<addon 
-    id="plugin.audio.iloveradio"
-    name="[COLOR white]I[/COLOR] [COLOR red]Love[/COLOR] [COLOR white]Radio[/COLOR]"
-    version="1.0.13" 
-    provider-name="SGK, SH Germania">
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<addon id="plugin.audio.iloveradio" name="I Love Music" version="1.3.0" provider-name="SGK, AI">
     <requires>
-		<import addon="xbmc.python" version="3.0.0" targetversion="3.0.0"/>
-	</requires>
-	<extension point="xbmc.python.pluginsource" library="addon.py">
-		<provides>audio</provides>
-	</extension>
-	<extension point="xbmc.addon.metadata">
-		<platform>all</platform>
-		<summary>[COLOR white]I[/COLOR] [COLOR red]Love[/COLOR] [COLOR white]Radio[/COLOR]</summary>
-		<description>
-[COLOR yellow]I Love Radio - Webstreams[/COLOR]
-[COLOR yellow]Source:[/COLOR]
-http://www.iloveradio.de/
-[COLOR yellow]Created by:[/COLOR]
-SGK, SH Germania
-[COLOR yellow]Support:[/COLOR]
-https://www.facebook.com/groups/kodiunlimited/
-https://www.facebook.com/groups/hskde/</description>
-		<license></license>
-		<language></language>	
-		<source></source>
-		<email></email>
-	<assets>
-		<icon>icon.png</icon>
-		<fanart>fanart.jpg</fanart>
-		<banner></banner>
-		<clearlogo></clearlogo>
-		<screenshot></screenshot>
-	</assets>
-	</extension>
+        <import addon="xbmc.python" version="3.0.1" />
+    </requires>
+    <extension point="xbmc.python.pluginsource" library="default.py">
+        <provides>audio</provides>
+    </extension>
+    <extension point="xbmc.service" library="service.py" start="startup" />
+    <extension point="xbmc.addon.metadata">
+        <summary lang="de_DE">I Love Music Radio</summary>
+        <summary lang="en_GB">I Love Music radio</summary>
+        <description lang="de_DE">Live Musikradio Addon für Kodi mit den offiziellen I Love Music Channels.[CR]Charts, Dance, Hip Hop, Throwbacks, Chill, Hardstyle und viele weitere Sender.</description>
+        <description lang="en_GB">Live music radio addon for Kodi featuring official I Love Music channels.[CR]Charts, Dance, Hip Hop, Throwbacks, Chill, Hardstyle and many more stations.</description>
+        <platform>all</platform>
+        <license>MIT</license>
+        <source>https://ilovemusic.de/</source>
+        <website>https://ilovemusic.de/</website>
+        <forum>https://info.kodi-unlimited-support.de/</forum>
+       <assets>
+            <icon>icon.png</icon>
+            <fanart>fanart.jpg</fanart>
+			<screenshot>resources/media/screenshot-01.png</screenshot>
+			<screenshot>resources/media/screenshot-02.png</screenshot>
+			<screenshot>resources/media/screenshot-03.png</screenshot>
+        </assets>
+        <news>
+
+            v1.3.0
+            - Full bilingual localization support
+            - Localized settings
+            - Localized notifications
+            - Localized context menus
+            - New clean main menu
+            - Categories submenu
+            - Optional settings menu entry
+            - Cache folder structure
+            - Improved cache cleanup
+            - Improved background service
+
+            v1.2.0
+            - M3U export
+            - Direct Radiohost MP3 streams
+            - IPTV Simple optimized export
+            - Static TVG logo support
+            - Improved addon artwork support
+
+            v1.1.0
+            - Background service
+            - Smart cache system
+            - Auto refresh
+            - Live metadata updates
+            - Stream type selection (AAC/MP3)
+
+            v1.0.0
+            - Initial release
+            - Live radio channels
+            - AAC/MP3 streaming
+            - Genre support
+            - Kodi favorites support
+
+        </news>
+    </extension>
 </addon>

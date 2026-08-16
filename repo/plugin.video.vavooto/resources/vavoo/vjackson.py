@@ -74,11 +74,12 @@ def a_z_tv(params):
 	end()
 
 def show(params):
-	data = cachedcall("list", params)
+	is_catalog_search = params["id"] in ("tmdb.movie", "tmdb.series")
+	data = catalog_list(params)
 	content, next = "seasons", data["next"]
-	data = [i for i in data["data"] if i.get("description")]
-	cat = "Beliebte Serien" if "popular" in params["id"] else "Angesagte Serien"
-	if params["id"].startswith("movie"):
+	data = data["data"]
+	cat = params.get("genre") or ("Suchergebnisse" if is_catalog_search else ("Beliebte Serien" if "popular" in params["id"] else "Angesagte Serien"))
+	if params["id"].startswith("movie") or params["id"] == "tmdb.movie":
 		cat = cat.replace("Serien", "Filme")
 		content = "movies"
 	set_content(content)
@@ -93,8 +94,71 @@ def show(params):
 				isFolder = False if o.getProperty("IsPlayable") == "true" else True
 				if not isFolder: o.addContextMenuItems([("Manuelle Stream Auswahl", "RunPlugin(%s&manual=true)" % url_for(urlparams))])
 				add(urlparams, o, isFolder)
-	if next: addDir(">>> Weiter", {"action": "show", "id": next})
+	if next is not None:
+		next_params = dict(params)
+		next_params.update({"action": "show", "cursor": next})
+		addDir(">>> Weiter", next_params)
 	end()
+
+def catalog_list(params):
+	catalog_id = params["id"]
+	request_id = catalog_id
+	sort = ""
+	filters = {}
+	if catalog_id not in ("tmdb.movie", "tmdb.series"):
+		media_type = "series" if catalog_id.startswith("series") else "movie"
+		catalog_id = "tmdb.%s" % media_type
+		request_id = params["id"].replace(".", "/", 1)
+		sort = "trendingDay" if "trending" in params["id"] else "popularity"
+	if params.get("genre"):
+		filters["genre"] = [params["genre"]]
+	cursor = params.get("cursor")
+	if cursor in (None, "", "None"):
+		cursor = None
+	elif isinstance(cursor, str) and cursor.isdigit():
+		cursor = int(cursor)
+	_headers = {
+		"user-agent": "MediaHubMX/2",
+		"accept": "application/json",
+		"content-type": "application/json; charset=utf-8",
+		"accept-encoding": "gzip",
+		"mediahubmx-signature": getAuthSignature()
+	}
+	_data = {
+		"language": "de",
+		"region": "AT",
+		"catalogId": catalog_id,
+		"id": request_id,
+		"adult": False,
+		"search": params.get("search", ""),
+		"sort": sort,
+		"filter": filters,
+		"cursor": cursor,
+		"clientVersion": "3.1.0"
+	}
+	req = request_json("POST", "https://vavoo.to/mediahubmx-catalog.json", json=_data, headers=_headers, timeout=10, retries=1)
+	items = req.get("items", req.get("data", []))
+	media_type = "series" if catalog_id == "tmdb.series" else "movie"
+	result = []
+	for item in items:
+		item = dict(item)
+		ids = item.get("ids") or {}
+		item_type = item.get("type") or media_type
+		if item_type not in ("movie", "series"):
+			item_type = media_type
+		item_id = str(item.get("id") or ids.get("tmdb_id") or item.get("tmdbId") or item.get("tmdb_id") or "")
+		for prefix in ("tmdb.movie.", "tmdb.series.", "tmdb:movie:", "tmdb:series:"):
+			if item_id.startswith(prefix):
+				item_id = item_id[len(prefix):]
+				break
+		if item_id.isdigit():
+			item_id = "%s.%s" % (item_type, item_id)
+		if not item_id.startswith(("movie.", "series.")):
+			continue
+		item["id"] = item_id
+		item["name"] = item.get("name", item.get("title", ""))
+		result.append(item)
+	return {"data": result, "next": req.get("nextCursor")}
 
 
 def search(params):
@@ -107,17 +171,23 @@ def search(params):
 		kb = xbmc.Keyboard(a, heading, False)
 		kb.doModal()
 		if (kb.isConfirmed()):
-			query = kb.getText().replace(".", "%2E")
-			para = "%s.search=%s" % (params["id"], query)
+			query = kb.getText().strip()
+			if not query:
+				return
+			para = {"id": "tmdb.series" if type == "SERIEN" else "tmdb.movie", "search": query}
 			history[query] = para
 			set_cache("seriesearch" if type == "SERIEN" else "moviesearch", history, False)
-			show({"id" : para})
+			show(para)
 		else: return
 	else:
 		addDir2("Neue Suche", "DefaultAddonsSearch", "search", id=params["id"], newsearch=True)
 		for a in history:
 			cm = [("Suchverlauf löschen", "RunPlugin(%s?action=delete_search&id=%s)" % (sys.argv[0], params["id"])), ("Suche löschen", "RunPlugin(%s?action=delete_search&id=%s&single=%s)" % (sys.argv[0], params["id"], a))]
-			addDir2(a, "DefaultAddonsSearch", "show", context=cm, id=history[a])
+			search_params = history[a]
+			if isinstance(search_params, dict):
+				addDir2(a, "DefaultAddonsSearch", "show", context=cm, **search_params)
+			else:
+				addDir2(a, "DefaultAddonsSearch", "show", context=cm, id=search_params)
 		end()
 
 def genres(params):
@@ -133,7 +203,7 @@ def genres(params):
 		{"genre": "Mystery", "icon":"Mystery"}, {"genre": "Liebesfilm", "icon":"Romance"}, {"genre": "Science Fiction", "icon":"Sci-Fi"}, {"genre": "TV-Film", "icon":"Mini-Series"},
 		{"genre": "Thriller", "icon":"Thriller"}, {"genre": "Kriegsfilm", "icon":"War"}, {"genre": "Western", "icon":"Western"}]
 	genrelist= serie_genrelist if params["id"].startswith("serie") else movie_genrelist
-	for genre in genrelist: addDir2(genre["genre"], genre["icon"], "show", id="%s.genre=%s" % (params["id"], genre["genre"]))
+	for genre in genrelist: addDir2(genre["genre"], genre["icon"], "show", id=params["id"], genre=genre["genre"])
 	end()
 
 def seasons(params):
@@ -277,14 +347,6 @@ def get(params):
 				from vavoo.player import cPlayer
 				player().play(streamurl, o)
 				return cPlayer().startPlayer()
-
-def cachedcall(action, params, timeout=24):
-	cacheOk, content = get_cache(params)
-	if cacheOk: return content
-	else:
-		content = callApi2(action, params)
-		set_cache(params, content, timeout=timeout)
-		return content
 
 def callApi(action, params, method="GET", headers=None, **kwargs):
 	log(params, header="Action:%s params:" % action)

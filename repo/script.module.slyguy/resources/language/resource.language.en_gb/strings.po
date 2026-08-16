@@ -1148,3 +1148,7 @@ msgstr ""
 msgctxt "#32236"
 msgid "Removed from Watchlist"
 msgstr ""
+
+msgctxt "#32237"
+msgid "Kodi 22 (Piers) or newer is required for Widevine playback on LG WebOS"
+msgstr ""

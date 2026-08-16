@@ -213,8 +213,8 @@ class RequestHandler(BaseHTTPRequestHandler):
         if url == new_url:
             return new_url
 
-        if url == self._session.get('manifest'):
-            self._session['manifest'] = new_url
+        if url in self._session.get('manifest'):
+            self._session['manifest'].append(new_url)
         if url == self._session.get('license_url'):
             self._session['license_url'] = new_url
         if url in self._session.get('middleware', {}):
@@ -296,7 +296,7 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             response = self._proxy_request('GET', url)
 
-            if not self._session.get('type') and url == manifest:
+            if not self._session.get('type') and manifest and url in manifest:
                 if response.headers.get('content-type') == 'application/x-mpegURL':
                     self._session['type'] = 'm3u8'
                 elif response.headers.get('content-type') == 'application/dash+xml':
@@ -309,13 +309,13 @@ class RequestHandler(BaseHTTPRequestHandler):
                 return
 
             parse = urlparse(self.path.lower())
-            if self._session.get('type') == 'm3u8' and (url == manifest or parse.path.endswith('.m3u') or parse.path.endswith('.m3u8') or response.headers.get('content-type') == 'application/x-mpegURL'):
+            if self._session.get('type') == 'm3u8' and (url in manifest or parse.path.endswith('.m3u') or parse.path.endswith('.m3u8') or response.headers.get('content-type') == 'application/x-mpegURL'):
                 self._parse_m3u8(response)
 
-            elif self._session.get('type') == 'mpd' and url == manifest:
+            elif self._session.get('type') == 'mpd' and url in manifest:
                 self._parse_dash(response)
 
-            elif self._session.get('type') == 'pls' and url == manifest:
+            elif self._session.get('type') == 'pls' and url in manifest:
                 self._parse_pls(response)
         except Redirect as e:
             log.info('Redirecting to: {}'.format(e.url))
@@ -324,6 +324,7 @@ class RequestHandler(BaseHTTPRequestHandler):
             response.stream.content = b''
         except Exception as e:
             if type(e) != Exit:
+                log.exception(e)
                 log.error("PROXY ERROR: {}".format(e))
 
             def output_error(url):
@@ -339,10 +340,10 @@ class RequestHandler(BaseHTTPRequestHandler):
                 if type(e) == Exit:
                     output_error(self.proxy_path+STOP_URL)
 
-                elif url == manifest:
+                elif url in manifest:
                     output_error(self.proxy_path+ERROR_URL)
         else:
-            if url == manifest:
+            if url in manifest:
                 PROXY_GLOBAL['error_count'] = 0
 
         self._output_response(response)
@@ -537,7 +538,9 @@ class RequestHandler(BaseHTTPRequestHandler):
         try:
             root = parseString(data.encode('utf8'))
         except Exception as e:
-            raise ProxyException('Failed to parse dash: {}'.format(data))
+            # partial update 204 with empty content can cause this
+            # if we return empty - IA will fail and stop playing - however if we raise here IA will go download the initial full manifest and keep playing
+            raise ProxyException('Failed to parse dash: "{}"'.format(data))
 
         if ADDON_DEV:
             pretty = root.toprettyxml(encoding='utf-8')
@@ -826,11 +829,11 @@ class RequestHandler(BaseHTTPRequestHandler):
         default_languages = []
         default_subtitles = []
         for adap_set in root.getElementsByTagName('AdaptationSet'):
-            language = adap_set.getAttribute('lang')
+            language = fix_language(adap_set.getAttribute('lang'))
             if not language:
                 continue
 
-            adap_set.setAttribute('lang', fix_language(language))
+            adap_set.setAttribute('lang', language)
 
             if is_audio(adap_set):
                 if adap_set.getAttribute('default') == 'true':
@@ -968,7 +971,7 @@ class RequestHandler(BaseHTTPRequestHandler):
 
             elem.firstChild.nodeValue = self.proxy_path + url
             # update our manifest url to the location url
-            self._session['manifest'] = url
+            self._session['manifest'].append(url)
         ################
 
         ## Convert to proxy paths

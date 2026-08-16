@@ -747,8 +747,8 @@ class Item(gui.Item):
 
         set_kodi_string('_slyguy_play_data', json.dumps(play_data))
 
-        # check supporter on final url
-        if self.manifest.lower().startswith('http') and not xbmc.getCondVisibility('Player.Playing'):
+        # check supporter on final non-plugin url. Assume plugin urls will show it when they start playing
+        if not self.manifest.lower().startswith('plugin') and not xbmc.getCondVisibility('Player.Playing'):
             process_support()
 
         if kwargs.get('_run_plugin', None):

@@ -3,36 +3,51 @@
 
 def main():
     from xstream import parseUrl
+    from resources.lib.tools import infoDialog
     from os.path import join
-    from sys import path
+    import sys
     import platform
+    import os
 
     from resources.lib.config import cConfig
-    from xbmc import LOGINFO as LOGNOTICE, log
+    from resources.lib.logger import logger
     from xbmcvfs import translatePath
 
     _addonPath_ = translatePath(cConfig().getAddonInfo('path'))
-    path.append(join(_addonPath_, 'resources', 'lib'))
-    path.append(join(_addonPath_, 'resources', 'lib', 'gui'))
-    path.append(join(_addonPath_, 'resources', 'lib', 'handler'))
-    path.append(join(_addonPath_, 'resources', 'art', 'sites'))
-    path.append(join(_addonPath_, 'resources', 'art'))
-    path.append(join(_addonPath_, 'sites'))    
+    sys.path.append(join(_addonPath_, 'resources', 'lib'))
+    sys.path.append(join(_addonPath_, 'resources', 'lib', 'gui'))
+    sys.path.append(join(_addonPath_, 'resources', 'lib', 'handler'))
+    sys.path.append(join(_addonPath_, 'resources', 'art', 'sites'))
+    sys.path.append(join(_addonPath_, 'resources', 'art'))
+    sys.path.append(join(_addonPath_, 'sites'))    
     
-    LOGMESSAGE = cConfig().getLocalizedString(30166)
-    log('-----------------------------------------------------------------------', LOGNOTICE)
-    log(LOGMESSAGE + ' -> [default]: Start xStream Log, Version %s ' % cConfig().getAddonInfo('version'), LOGNOTICE)
-    log(LOGMESSAGE + ' -> [default]: Python-Version: %s' % platform.python_version(), LOGNOTICE)
+    logger.debug('Start xStream Log, Version %s' % cConfig().getAddonInfo('version'))
+    logger.debug('Python-Version: %s' % platform.python_version())
+
+    # RunScript handler for changelog button in settings
+    if len(sys.argv) > 1 and sys.argv[1] == 'changelog':
+        import xbmcgui
+        changelog_path = os.path.join(_addonPath_, 'changelog.txt')
+        if not os.path.isfile(changelog_path):
+            infoDialog(cConfig().getLocalizedString(30822), icon='INFO')
+            return
+        with open(changelog_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        if not text.strip():
+            infoDialog(cConfig().getLocalizedString(30821), icon='INFO')
+        else:
+            xbmcgui.Dialog().textviewer('Changelog', text)
+        return
 
     try:
         parseUrl()
     except Exception as e:
         if str(e) == 'UserAborted':
-            log(LOGMESSAGE + ' -> [default]: User aborted list creation', LOGNOTICE)
+            logger.debug('User aborted list creation');
         else:
             import traceback
             import xbmcgui
-            log(traceback.format_exc(), LOGNOTICE)
+            logger.error(traceback.format_exc())
             value = (str(e.__class__.__name__) + ' : ' + str(e), str(traceback.format_exc().splitlines()[-3].split('addons')[-1]))
             dialog = xbmcgui.Dialog().ok(cConfig().getLocalizedString(257), str(value)) # Error
 

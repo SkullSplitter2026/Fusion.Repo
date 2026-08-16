@@ -26,7 +26,6 @@ site = AdultSite('rlc', '[COLOR hotpink]Reallifecam.to[/COLOR]', 'https://realli
 # site1 = AdultSite('vh', '[COLOR hotpink]Voyeur-house.to[/COLOR]', 'https://voyeur-house.to/', 'https://voyeur-house.to/images/logo/logo.png', 'vh')
 site2 = AdultSite('vhlife', '[COLOR hotpink]Voyeur-house[/COLOR]', 'https://www.voyeur-house.me/', 'https://www.voyeur-house.me/images/logo/logo.png', 'vhlife')
 site3 = AdultSite('vhlife1', '[COLOR hotpink]Reallifecams.us[/COLOR]', 'https://reallifecams.us/', 'https://reallifecams.us/images/logo/logo.png', 'vhlife1')
-site4 = AdultSite('camcaps', '[COLOR hotpink]Camcaps[/COLOR]', 'https://camcaps.tv/', 'https://camcaps.tv/images/logo/logo.png', 'camcaps')
 
 
 def getBaselink(url):
@@ -38,8 +37,6 @@ def getBaselink(url):
         siteurl = site2.url
     elif 'reallifecams' in url:
         siteurl = site3.url
-    elif 'camcaps.tv' in url:
-        siteurl = site4.url
     return siteurl
 
 
@@ -47,14 +44,10 @@ def getBaselink(url):
 # @site1.register(default_mode=True)
 @site2.register(default_mode=True)
 @site3.register(default_mode=True)
-@site4.register(default_mode=True)
 def Main(url):
     siteurl = getBaselink(url)
     site.add_dir('[COLOR hotpink]Categories[/COLOR]', siteurl + 'categories', 'Categories', site.img_cat)
-    if 'camcaps' in url:
-        site.add_dir('[COLOR hotpink]Search[/COLOR]', siteurl + 'search/videos/', 'Search', site.img_search)
-    else:
-        site.add_dir('[COLOR hotpink]Search[/COLOR]', siteurl + 'search/videos?search_query=', 'Search', site.img_search)
+    site.add_dir('[COLOR hotpink]Search[/COLOR]', siteurl + 'search/videos?search_query=', 'Search', site.img_search)
     List(siteurl + 'videos?o=mr')
 
 
@@ -63,7 +56,8 @@ def List(url):
     siteurl = getBaselink(url)
     listhtml = utils.getHtml(url, '')
 
-    match = re.compile(r'col-sm-6.+?<a href="([^"]+)".+?img src="([^"]+)" title="([^"]+)"(.+?)class="duration">\s*([\d:]+)', re.DOTALL | re.IGNORECASE).findall(listhtml)
+    # match = re.compile(r'col-sm-6.+?<a href="([^"]+)".+?img src="([^"]+)" title="([^"]+)"(.+?)class="duration">\s*([\d:]+)', re.DOTALL | re.IGNORECASE).findall(listhtml)
+    match = re.compile(r'col-sm-6.+?<a href="([^"]+)".+?img src="([^"]+)" title="([^"]+)"(.+?)class="duration">\D*([\d:]+)', re.DOTALL | re.IGNORECASE).findall(listhtml)
 
     for videopage, img, name, quality, duration in match:
         name = utils.cleantext(name)
@@ -95,10 +89,7 @@ def Search(url, keyword=None):
 def Categories(url):
     siteurl = getBaselink(url)
     cathtml = utils.getHtml(url, '')
-    if 'reallifecam.to' in url:
-        match = re.compile('div class="col-sm.+?a href="([^"]+)"(>).+?title-truncate">([^<]+)<.+?class="badge">([^<]+)<', re.DOTALL | re.IGNORECASE).findall(cathtml)
-    else:
-        match = re.compile(r'col-sm.+?a href="([^"]+)">.+?img src="([^"]+)"\s*title="([^"]+)".+?"float-right">\s*(\d+)\s*<', re.DOTALL | re.IGNORECASE).findall(cathtml)
+    match = re.compile(r'col-sm.+?a href="([^"]+)">.+?img src="([^"]+)"\s*title="([^"]+)".+?"float-right">\s*(\d+)\s*<', re.DOTALL | re.IGNORECASE).findall(cathtml)
     for catpage, img, name, videos in match:
         catpage = siteurl[:-1] + catpage if catpage.startswith('/') else catpage
         img = siteurl[:-1] + img if img.startswith('/') else site.img_cat
@@ -131,9 +122,9 @@ def Playvid(url, name, download=None):
         else:
             videourl = re.compile(r'>(eval.+?)<\/script>', re.DOTALL | re.IGNORECASE).findall(refpage)[0]
             videourl = unpack(videourl)
-            videolink = re.compile('(?:src|file):"([^"]+)"', re.DOTALL | re.IGNORECASE).findall(videourl)
+            match = re.compile('(?:src|file):"([^"]+)"', re.DOTALL | re.IGNORECASE).findall(videourl)
             if match:
-                videolink = videolink[0] + '|Referer=' + refurl + '&verifypeer=false'
+                videolink = match[0] + '|Referer=' + refurl + '&verifypeer=false'
                 if videolink.startswith('/') and 'vidello' in refurl:
                     videolink = 'https://oracle.vidello.net' + videolink
                 vp.play_from_direct_link(videolink)

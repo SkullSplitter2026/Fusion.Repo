@@ -1,0 +1,19 @@
+<settings>
+	<category label="30001">
+		<setting id="sunchange" type="bool" label="30010" default="False" />
+		<setting id="location" type="action" action="RunScript(script.arctic.zephyr.martian.autocolors,loc)" label="30013" visible="eq(-1,true)" default="" />
+		<setting id="latitude" type="text" label="30011" visible="false" default="52.520008" />
+		<setting id="longitude" type="text" label="30012" visible="false" default="13.404954" />
+		<setting id="start_time" type="time" label="30002" visible="eq(-4,false)" default="08:00"/>
+		<setting id="end_time" type="time" label="30003" visible="eq(-5,false)" default="20:00"/>
+		<setting id="start_time_sun" type="time" label="30014" enable="false" visible="eq(-6,true)" default=""/>
+		<setting id="end_time_sun" type="time" label="30015" enable="false" visible="eq(-7,true)" default=""/>
+		<setting id="lightmode" type="select" default="Light with Light Dialogs" label="30006" values="Light with Light Dialogs|Light with Dark Dialogs" />
+		<setting id="darkmode" type="select" default="Dark with Dark Dialogs" label="30005" values="Dark with Dark Dialogs|Dark with Light Dialogs" />
+	</category>
+	<category label="30009">
+		<setting id="player" type="bool" default="false" label="30007" />
+		<setting id="saver" type="bool" default="false" label="30008" />
+		<setting id="debug" type="bool" default="false" label="30004" />
+	</category>
+</settings>

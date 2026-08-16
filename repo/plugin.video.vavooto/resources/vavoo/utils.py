@@ -42,6 +42,37 @@ openSettings = addon.openSettings
 execute = xbmc.executebuiltin
 getCondV = xbmc.getCondVisibility
 
+PING_URLS   = [
+    "https://www.vypn.net/api/app/ping",
+    "https://cache.vypn.net/api/app/ping",
+]
+BROWSER_UA  = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+               "AppleWebKit/537.36 (KHTML, like Gecko) "
+               "Chrome/124.0.0.0 Safari/537.36")
+_headers = {"accept": "*/*", "user-agent": BROWSER_UA, "Accept-Encoding": "gzip, deflate", "Connection": "close"}
+
+def _build_payload():
+    uid = str(uuid.uuid4())
+    ts  = int(time.time() * 1000)
+    return {
+        "reason": "app-focus", "locale": "en", "theme": "dark",
+        "metadata": {
+            "device":  {"type": "desktop", "uniqueId": uid},
+            "os":      {"name": "win32", "version": "Windows 10 Pro",
+                        "abis": ["x64"], "host": "Lenovo"},
+            "app":     {"platform": "electron"},
+            "version": {"package": "net.vypn.app", "binary": "3.1.0", "js": "3.1.0"},
+        },
+        "appFocusTime": 0, "playerActive": False, "playDuration": 0,
+        "devMode": False, "hasAddon": True, "castConnected": False,
+        "package": "net.vypn.app", "version": "3.1.0", "process": "app",
+        "firstAppStart": ts, "lastAppStart": ts, "ipLocation": None,
+        "adblockEnabled": True,
+        "proxy": {"supported": ["ss"], "engine": "Mu",
+                  "enabled": False, "autoServer": True},
+        "iap": {"supported": False},
+    }
+
 def request(method, url, retries=2, timeout=15, **kwargs):
 	kwargs.setdefault("timeout", timeout)
 	for attempt in range(retries + 1):
@@ -98,15 +129,14 @@ clear(auto=True)
 
 def getAuthSignature():
 	i = 0
-	while i < 5:
-		i+=1
-		try:
-			_headers = {'accept':'application/json','content-type':'application/json; charset=utf-8','user-agent':'electron-fetch/1.0 electron (+https://github.com/arantes555/electron-fetch)','Accept-Language':'de'}
-			_data = {"reason":"app-focus","locale":"de","theme":"dark","metadata":{"device":{"type":"Handset","brand":"google","model":"Nexus","name":"21081111RG","uniqueId":"d10e5d99ab665233"},"os":{"name":"android","version":"7.1.2","abis":["arm64-v8a"],"host":"android"},"app":{"platform":"android","version":"1.1.0","buildId":"97215000","engine":"hbc85","signatures":["6e8a975e3cbf07d5de823a760d4c2547f86c1403105020adee5de67ac510999e"],"installer":"com.android.vending"},"version":{"package":"app.lokke.main","binary":"4.1.1","js":"4.1.1"},"platform":{"isAndroid":True,"isIOS":False,"isTV":False,"isWeb":False,"isMobile":True,"isWebTV":False,"isElectron":False}},"appFocusTime":314,"playerActive":False,"playDuration":0,"devMode":True,"hasAddon":True,"castConnected":False,"package":"app.lokke.main","version":"4.1.1","process":"app","firstAppStart":1777415870151,"lastAppStart":1777415870151,"ipLocation":None,"adblockEnabled":False,"proxy":{"supported":["ss","openvpn"],"engine":"openvpn","ssVersion":1,"enabled":False,"autoServer":True,"id":"fi-hel"},"iap":{"supported":True}}
-			req = request_json("POST", 'https://www.lokke.app/api/app/ping', json=_data, headers=_headers, timeout=10, retries=1)
-			return req.get("addonSig")
-		except Exception:
-			continue
+	for url in PING_URLS:
+		while i < 5:
+			i+=1
+			try:
+				req = request_json("POST", url, json=_build_payload(), headers=_headers, timeout=15, retries=3, verify=False)
+				return req.get("sig") or req.get("addonSig") or req.get("signature") or req.get("mediahubmxSignature") or req.get("mediahubmx-signature") or req.get("token") or ""
+			except Exception:
+				continue
 
 def append_headers(headers):
 	return '|%s' % '&'.join(['%s=%s' % (key, quote_plus(headers[key])) for key in headers])

@@ -260,32 +260,32 @@ def torbox_menu():
                 directory.add_separator()
                 
 def offcloud_menu():
-    for offc in acct_vwr.ORDER:
+    for oc in acct_vwr.ORDER:
         # Filter only addons that support OffCloud
-        if not acct_vwr.ADDONS[offc].get('default_oc'):
+        if not acct_vwr.ADDONS[oc].get('default_oc'):
             continue
-        if not xbmc.getCondVisibility('System.HasAddon({0})'.format(acct_vwr.ADDONS[offc]['plugin'])):
+        if not xbmc.getCondVisibility('System.HasAddon({0})'.format(acct_vwr.ADDONS[oc]['plugin'])):
             pass
         else:
-            if xbmc.getCondVisibility('System.HasAddon({0})'.format(acct_vwr.ADDONS[offc]['plugin'])):
-                name = acct_vwr.ADDONS[offc]['name']
-                path = acct_vwr.ADDONS[offc]['path']
+            if xbmc.getCondVisibility('System.HasAddon({0})'.format(acct_vwr.ADDONS[oc]['plugin'])):
+                name = acct_vwr.ADDONS[oc]['name']
+                path = acct_vwr.ADDONS[oc]['path']
                 auser = acct_vwr.addon_user_oc(oc)
-                icon = acct_vwr.ADDONS[offc]['icon'] if os.path.exists(path) else CONFIG.ICON
-                fanart = acct_vwr.ADDONS[offc]['fanart'] if os.path.exists(path) else CONFIG.ADDON_FANART
-                menu = create_addon_data_menu('OffCloud', offc)
-                menu.append((CONFIG.THEME1.format('{0} Settings'.format(name)), 'RunPlugin(plugin://{0}/?mode=opensettings&name={1}&url=offc)'.format(CONFIG.ADDON_ID, offc)))
+                icon = acct_vwr.ADDONS[oc]['icon'] if os.path.exists(path) else CONFIG.ICON
+                fanart = acct_vwr.ADDONS[oc]['fanart'] if os.path.exists(path) else CONFIG.ADDON_FANART
+                menu = create_addon_data_menu('OffCloud', oc)
+                menu.append((CONFIG.THEME1.format('{0} Settings'.format(name)), 'RunPlugin(plugin://{0}/?mode=opensettings&name={1}&url=oc)'.format(CONFIG.ADDON_ID, oc)))
 
                 if not auser:
-                    directory.add_file('{0} - [COLOR red]Not Authorized[/COLOR]'.format(name), {'name': offc}, icon=icon, description='Your Offcloud Authorizations', fanart=fanart, themeit=CONFIG.THEME2)
+                    directory.add_file('{0} - [COLOR red]Not Authorized[/COLOR]'.format(name), {'name': oc}, icon=icon, description='Your Offcloud Authorizations', fanart=fanart, themeit=CONFIG.THEME2)
                 else:
-                    directory.add_file('{0} - [COLOR springgreen]Authorized[/COLOR]'.format(name), {'name': offc}, icon=icon, description='Your Offcloud Authorizations', fanart=fanart, themeit=CONFIG.THEME2)
-                if name == 'Fen Light':
+                    directory.add_file('{0} - [COLOR springgreen]Authorized[/COLOR]'.format(name), {'name': oc}, icon=icon, description='Your Offcloud Authorizations', fanart=fanart, themeit=CONFIG.THEME2)
+                if name == 'Red Light':
                     directory.add_file('[COLOR blue]Open [COLOR dodgerblue]{0}[/COLOR] Settings[/COLOR]'.format(name), {'mode': 'opensettings_fenlt', 'name': 'Fen Light'}, icon=icon, fanart=fanart, menu=menu)
-                elif name == 'The Gears':
-                    directory.add_file('[COLOR blue]Open [COLOR dodgerblue]{0}[/COLOR] Settings[/COLOR]'.format(name), {'mode': 'opensettings_gears', 'name': 'The Gears'}, icon=icon, fanart=fanart, menu=menu)
+                #elif name == 'The Gears':
+                    #directory.add_file('[COLOR blue]Open [COLOR dodgerblue]{0}[/COLOR] Settings[/COLOR]'.format(name), {'mode': 'opensettings_gears', 'name': 'The Gears'}, icon=icon, fanart=fanart, menu=menu)
                 else:
-                    directory.add_file('[COLOR blue]Open [COLOR dodgerblue]{0}[/COLOR] Settings[/COLOR]'.format(name), {'mode': 'opensettings_oc', 'name': offc}, icon=icon, fanart=fanart, menu=menu)
+                    directory.add_file('[COLOR blue]Open [COLOR dodgerblue]{0}[/COLOR] Settings[/COLOR]'.format(name), {'mode': 'opensettings_oc', 'name': oc}, icon=icon, fanart=fanart, menu=menu)
                 directory.add_separator()
 
 def easynews_menu():

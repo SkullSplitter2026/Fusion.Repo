@@ -43,14 +43,11 @@ def is_donor():
 def _set_donor(donor_id):
     set_kodi_string('_slyguy_donor', '1')
     settings.set('donor_id_chk', donor_id)
-    signals.emit(signals.ON_DONOR_SET, donor_id=donor_id)
 
 
 def _unset_donor():
     set_kodi_string('_slyguy_donor', '0')
-    old_donor_id = settings.get('donor_id_chk')
     settings.remove('donor_id_chk')
-    signals.emit(signals.ON_DONOR_UNSET, donor_id=old_donor_id)
 
 
 def is_wv_secure():
@@ -317,7 +314,7 @@ class CommonSettings(BaseSettings):
     FAST_UPDATES = Bool('fast_updates', default=True, enable=is_donor, disabled_value=False, disabled_reason=_.SUPPORTER_ONLY, override=False, owner=COMMON_ADDON_ID, category=Categories.SYSTEM)
     PROXY_ENABLED = Bool('proxy_enabled', default=True, before_save=lambda val: val or dialog.yes_no(_.CONFIRM_DISABLE_PROXY), owner=COMMON_ADDON_ID, category=Categories.SYSTEM)
     PROXY_PORT = Number('proxy_port', default=None, default_label=_.AUTO, override=False, visible=lambda: settings.PROXY_ENABLED.value, owner=COMMON_ADDON_ID,
-            after_save=lambda val: restart_service(COMMON_ADDON_ID), after_clear=lambda: restart_service(COMMON_ADDON_ID), category=Categories.SYSTEM)
+            after_save=lambda val: restart_service(COMMON_ADDON_ID), after_clear=lambda: restart_service(COMMON_ADDON_ID), category=Categories.SYSTEM, bulk_clear=False)
 
     # ROOT
     DONOR_ID = Donor('donor_id', override=False, confirm_clear=True, owner=COMMON_ADDON_ID, category=Categories.ROOT, image=get_qr_img(SUPPORT_URL))
