@@ -4,13 +4,32 @@
     and then update the md5 and addons.xml file
 """
 
-import hashlib
 import os
+import hashlib
 import shutil
 import sys
 import zipfile
+import time
+from datetime import datetime
 
 from xml.etree import ElementTree
+
+os.system("cls" if os.name == "nt" else "clear")
+
+class Colors:
+    RESET = "\x1b[0m"
+    BOLD = "\x1b[1m"
+    BOLD_GREEN = "\x1b[1;32m"
+    BG_BLACK = "\x1b[40m"
+
+print(f"""{Colors.BOLD_GREEN}{Colors.BG_BLACK}
+                          ____  __.     .__  .__           .__
+                    _____|    |/ _|__ __|  | |  |   ______ |__| ____   ____
+                   /  ___/      < |  |  \  | |  |  /  ___/ |  |/    \_/ __)
+                   \___ \|    |  \|  |  /  |_|  |__\___ \  |  |   |  \  \___
+                  /____  >____|__ \____/|____/____/____  > |__|___|  /\___  >
+                       \/        \/                    \/          \/     \/
+ {Colors.RESET}""")
 
 SCRIPT_VERSION = 5
 KODI_VERSIONS = ["omega", "repo"]
@@ -144,18 +163,45 @@ class Generator:
         addons_xml_path = os.path.join(self.zips_path, "addons.xml")
         md5_path = os.path.join(self.zips_path, "addons.xml.md5")
 
+        self.counters = {
+            "video": 0,
+            "audio": 0,
+            "program": 0,
+            "image": 0,
+            "script": 0,
+            "service": 0,
+            "repository": 0,
+            "skin": 0,
+            "resource": 0,
+            "metadata": 0,
+            "pvr": 0,
+            "other": 0,
+        }
+
+        self.total_size = 0
+        self.errors = []
+        self.start_time = time.time()
+        self.total_addons = 0
+        self.processed_addons = 0
+
+        print(f"{Colors.BOLD_GREEN}Startzeit: {datetime.now().strftime('%H:%M:%S')}{Colors.RESET}\n")
+
         if not os.path.exists(self.zips_path):
             os.makedirs(self.zips_path)
 
         self._remove_binaries()
 
         if self._generate_addons_file(addons_xml_path):
+            self._print_summary()
+            self._print_time_stats()
+            print()
             print(
                 "Successfully updated {}".format(color_text(addons_xml_path, 'yellow'))
             )
 
             if self._generate_md5_file(addons_xml_path, md5_path):
                 print("Successfully updated {}".format(color_text(md5_path, 'yellow')))
+                print()
 
     def _remove_binaries(self):
         """
@@ -206,12 +252,22 @@ class Generator:
             os.makedirs(zip_folder)
 
         final_zip = os.path.join(zip_folder, "{0}-{1}.zip".format(addon_id, version))
-        if not os.path.exists(final_zip):
+        
+        needs_rebuild = True
+        if os.path.exists(final_zip):
+            addon_mtime = max(os.path.getmtime(os.path.join(root, f)) 
+                            for root, _, files in os.walk(addon_folder) 
+                            for f in files)
+            zip_mtime = os.path.getmtime(final_zip)
+            if addon_mtime <= zip_mtime:
+                needs_rebuild = False
+                self.total_size += os.path.getsize(final_zip)
+        
+        if needs_rebuild:
             zip = zipfile.ZipFile(final_zip, "w", compression=zipfile.ZIP_DEFLATED)
             root_len = len(os.path.dirname(os.path.abspath(addon_folder)))
 
             for root, dirs, files in os.walk(addon_folder):
-                # remove any unneeded artifacts
                 for i in IGNORE:
                     if i in dirs:
                         try:
@@ -233,14 +289,110 @@ class Generator:
                     zip.write(fullpath, archive_name, zipfile.ZIP_DEFLATED)
 
             zip.close()
-            size = convert_bytes(os.path.getsize(final_zip))
-            print(
-                "Zip created for {} ({}) - {}".format(
-                    color_text(addon_id, 'cyan'),
-                    color_text(version, 'green'),
-                    color_text(size, 'yellow'),
-                )
+        
+        file_size = os.path.getsize(final_zip)
+        self.total_size += file_size
+        size = convert_bytes(file_size)
+        
+        self._increment_counter(addon_id)
+        self.processed_addons += 1
+        
+        self._print_progress()
+        
+        print(
+            "  Zip: {} ({}) - {}".format(
+                color_text(addon_id, 'cyan'),
+                color_text(version, 'green'),
+                color_text(size, 'yellow'),
             )
+        )
+
+    def _increment_counter(self, addon_id):
+        if addon_id.startswith("plugin.video"):
+            self.counters["video"] += 1
+        elif addon_id.startswith("plugin.audio"):
+            self.counters["audio"] += 1
+        elif addon_id.startswith("plugin.program"):
+            self.counters["program"] += 1
+        elif addon_id.startswith("plugin.image"):
+            self.counters["image"] += 1
+        elif addon_id.startswith("script"):
+            self.counters["script"] += 1
+        elif addon_id.startswith("service"):
+            self.counters["service"] += 1
+        elif addon_id.startswith("repository"):
+            self.counters["repository"] += 1
+        elif addon_id.startswith("skin"):
+            self.counters["skin"] += 1
+        elif addon_id.startswith("resource"):
+            self.counters["resource"] += 1
+        elif addon_id.startswith("metadata"):
+            self.counters["metadata"] += 1
+        elif addon_id.startswith("pvr"):
+            self.counters["pvr"] += 1
+        else:
+            self.counters["other"] += 1
+
+    def _print_progress(self):
+        if self.total_addons > 0:
+            percent = int((self.processed_addons / self.total_addons) * 50)
+            bar = "█" * percent + "░" * (50 - percent)
+            elapsed = time.time() - self.start_time
+            print(f"\r[{bar}] {self.processed_addons}/{self.total_addons} ({elapsed:.1f}s)", end="", flush=True)
+
+    def _print_summary(self):
+        print(f"\n{Colors.BOLD_GREEN}{Colors.BG_BLACK}╔══════════════════════════════════════════════╗")
+        print(f"║             Z I P   S U M M A R Y            ║")
+        print(f"╠══════════════════════════════════════════════╣")
+        
+        items = [(cat, count) for cat, count in self.counters.items() if count > 0]
+        half = (len(items) + 1) // 2
+        
+        row1 = items[:half]
+        row2 = items[half:]
+        
+        for i in range(max(len(row1), len(row2))):
+            left = row1[i] if i < len(row1) else ("", 0)
+            right = row2[i] if i < len(row2) else ("", 0)
+            left_str = f"{self._get_category_color(left[0])}{left[0].capitalize():12}{Colors.RESET} : {left[1]:3d}" if left[1] else " " * 18
+            right_str = f"{self._get_category_color(right[0])}{right[0].capitalize():12}{Colors.RESET} : {right[1]:3d}" if right[1] else " " * 18
+            print(f"║  {left_str}    {right_str}    ║")
+        
+        total = sum(count for _, count in items)
+        total_size_str = convert_bytes(self.total_size)
+        print(f"╠══════════════════════════════════════════════╣")
+        print(f"║  {Colors.BOLD_GREEN}TOTAL{Colors.RESET}          : {total:3d}  |  Size: {total_size_str:>10}   ║")
+        if self.errors:
+            print(f"╠══════════════════════════════════════════════╣")
+            print(f"║  {color_text('ERRORS:', 'red')} {len(self.errors):3d} addon(s) excluded          ║")
+            for err in self.errors[:5]:
+                print(f"║    - {color_text(err[:40], 'yellow'):40}    ║")
+            if len(self.errors) > 5:
+                print(f"║    ... and {len(self.errors) - 5} more                    ║")
+        print(f"╚══════════════════════════════════════════════╝{Colors.RESET}")
+
+    def _print_time_stats(self):
+        elapsed = time.time() - self.start_time
+        start_time_str = datetime.fromtimestamp(self.start_time).strftime('%H:%M:%S')
+        end_time = datetime.now().strftime('%H:%M:%S')
+        print(f"\n{Colors.BOLD_GREEN}Start: {start_time_str} | End: {end_time} | Duration: {elapsed:.2f}s{Colors.RESET}")
+
+    def _get_category_color(self, cat):
+        colors_map = {
+            "video": "\x1b[1;31m",
+            "audio": "\x1b[1;33m",
+            "program": "\x1b[1;32m",
+            "image": "\x1b[1;36m",
+            "script": "\x1b[1;35m",
+            "service": "\x1b[1;34m",
+            "repository": "\x1b[1;37m",
+            "skin": "\x1b[1;30m",
+            "resource": "\x1b[1;35m",
+            "metadata": "\x1b[1;33m",
+            "pvr": "\x1b[1;31m",
+            "other": "\x1b[1;37m",
+        }
+        return colors_map.get(cat, "")
 
     def _copy_meta_files(self, addon_id, addon_folder):
         """
@@ -292,6 +444,11 @@ class Generator:
             and os.path.exists(os.path.join(self.release_path, i, "addon.xml"))
         ]
 
+        self.total_addons = len(folders)
+        self.processed_addons = 0
+
+        print(f"{Colors.BOLD_GREEN}Processing {self.total_addons} addons...{Colors.RESET}\n")
+
         addon_xpath = "addon[@id='{}']"
         changed = False
         for addon in folders:
@@ -316,13 +473,14 @@ class Generator:
                     changed = True
 
                 if updated:
-                    # Create the zip files
                     self._create_zip(addon, id, version)
                     self._copy_meta_files(addon, os.path.join(self.zips_path, id))
             except Exception as e:
+                error_msg = f"{addon}: {str(e)}"
+                self.errors.append(error_msg)
                 print(
                     "Excluding {}: {}".format(
-                        color_text(addon, 'yellow'), color_text(e, 'red')
+                        color_text(addon, 'yellow'), color_text(str(e), 'red')
                     )
                 )
 
