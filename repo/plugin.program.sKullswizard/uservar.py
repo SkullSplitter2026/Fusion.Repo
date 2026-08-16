@@ -17,19 +17,19 @@ ADDONTITLE = '[B][COLOR indianred]sKulls[/COLOR] [COLOR gold]Fusion[/COLOR] [COL
 BUILDERNAME = '[COLOR indianred]sKulls[/COLOR] [COLOR gold]Fusion[/COLOR] [COLOR indianred]Wizard[/COLOR]'
 EXCLUDES = [ADDON_ID, 'plugin.program.sKullswizard', 'repository.skulls']
 # Text File with build info in it. 
-BUILDFILE = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/builds.txt'
+BUILDFILE = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/builds.txt'
 # How often you would like it to check for build updates in days
 # 0 being every startup of kodi
 UPDATECHECK = 0
 # Text File with apk info in it.  Leave as 'http://' to ignore
-APKFILE = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/apk.txt'
+APKFILE = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/apk.txt'
 # Text File with Youtube Videos urls.  Leave as 'http://' to ignore
 YOUTUBETITLE = 'http://'
 YOUTUBEFILE = 'http://'
 # Text File for addon installer.  Leave as 'http://' to ignore
 ADDONFILE = 'http://'
 # Text File for advanced settings.  Leave as 'http://' to ignore
-ADVANCEDFILE = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/advsettings/advsettings.json'
+ADVANCEDFILE = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/advsettings/advsettings.json'
 #########################################################
 
 #########################################################
@@ -92,7 +92,7 @@ CONTACTFANART = 'http://'
 # Enable Auto Update 'Yes' or 'No'
 AUTOUPDATE = 'Yes'
 # Url to wizard version
-WIZARDFILE = 'https://SkullSplitter2020.github.io/Fusion.Repo/repo/zips/plugin.program.sKullswizard/plugin.program.sKullswizard-2.1.0.zip'
+WIZARDFILE = 'https://SkullSplitter2026.github.io/Fusion.Repo/repo/zips/plugin.program.sKullswizard/plugin.program.sKullswizard-2.1.0.zip'
 #########################################################
 
 #########################################################
@@ -103,9 +103,9 @@ AUTOINSTALL = 'No'
 # Addon ID for the repository
 REPOID = 'repository.skulls'
 # Url to Addons.xml file in your repo folder(this is so we can get the latest version)
-REPOADDONXML = 'https://SkullSplitter2020.github.io/Fusion.Repo/repo/zips/addons.xml'
+REPOADDONXML = 'https://SkullSplitter2026.github.io/Fusion.Repo/repo/zips/addons.xml'
 # Url to folder zip is located in
-REPOZIPURL = 'https://SkullSplitter2020.github.io/Fusion.Repo/repo/zips/'
+REPOZIPURL = 'https://SkullSplitter2026.github.io/Fusion.Repo/repo/zips/'
 #########################################################
 
 #########################################################
@@ -114,16 +114,16 @@ REPOZIPURL = 'https://SkullSplitter2020.github.io/Fusion.Repo/repo/zips/'
 # Enable Notification screen Yes or No
 ENABLE = 'Yes'
 # Url to notification file
-NOTIFICATION = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/notify.txt'
+NOTIFICATION = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/txt/notify.txt'
 # Use either 'Text' or 'Image'
 HEADERTYPE = 'Image'
 # Font size of header
 FONTHEADER = 'Font14'
 HEADERMESSAGE = '[B][COLOR indianred]sKulls[/COLOR] [COLOR gold]Fusion[/COLOR] [COLOR indianred]Wizard[/COLOR][/B]'
 # url to image if using Image 424x180
-HEADERIMAGE = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/images/Banner.png'
+HEADERIMAGE = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/images/Banner.png'
 # Font for Notification Window
 FONTSETTINGS = 'Font13'
 # Background for Notification Window
-BACKGROUND = 'http://skullsplitter.myqnapcloud.com/skulls.fusion.build/images/fanart.png'
+BACKGROUND = 'https://skullsplitter.myqnapcloud.com/skulls.fusion.build/images/fanart.png'
 #########################################################
